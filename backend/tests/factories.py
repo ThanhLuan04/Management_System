@@ -38,6 +38,14 @@ def make_product(
     return product
 
 
+def set_stock(db: Session, product: Product, quantity: int, avg_cost: str) -> None:
+    """Đặt tồn kho trực tiếp cho test bán hàng (bỏ qua bước nhập hàng — đã có test riêng)."""
+    inventory = db.get(Inventory, product.id)
+    inventory.quantity = quantity
+    inventory.avg_cost = Decimal(avg_cost)
+    db.commit()
+
+
 def make_supplier(db: Session, name: str = "Nhà cung cấp A", code: str = "NCC0001") -> Supplier:
     supplier = Supplier(code=code, name=name)
     db.add(supplier)

@@ -14,13 +14,17 @@ from app.schemas.partner import (
     SupplierOut,
     SupplierUpdate,
 )
-from app.services import partner_service
+from app.schemas.sales import OrderSummaryOut
+from app.services import partner_service, sales_service
 
 router = APIRouter()
 
 SupplierManager = Annotated[User, Depends(require_permission(Permission.SUPPLIERS_MANAGE))]
 CustomerViewer = Annotated[User, Depends(require_permission(Permission.CUSTOMERS_VIEW))]
 CustomerManager = Annotated[User, Depends(require_permission(Permission.CUSTOMERS_MANAGE))]
+CustomerOrderViewer = Annotated[
+    User, Depends(require_permission(Permission.CUSTOMERS_VIEW, Permission.ORDERS_VIEW))
+]
 
 
 # ---------- Nhà cung cấp ----------
@@ -93,7 +97,12 @@ def list_customers(
     items, total = partner_service.list_customers(
         db, q=q, is_active=is_active, page=params.page, page_size=params.page_size, sort=params.sort
     )
-    return Page[CustomerOut](items=items, page=params.page, page_size=params.page_size, total=total)
+    return Page[CustomerOut](
+        items=partner_service.to_customer_outs(db, items),
+        page=params.page,
+        page_size=params.page_size,
+        total=total,
+    )
 
 
 @router.post(
@@ -104,14 +113,49 @@ def list_customers(
     summary="Tạo khách hàng (mã tự sinh)",
 )
 def create_customer(body: CustomerCreate, request: Request, actor: CustomerManager, db: DbSession):
-    return partner_service.create_customer(db, body, actor, client_ip(request))
+    customer = partner_service.create_customer(db, body, actor, client_ip(request))
+    return partner_service.to_customer_outs(db, [customer])[0]
 
 
 @router.get(
     "/customers/{customer_id}", response_model=CustomerOut, tags=["customers"], summary="Chi tiết khách hàng"
 )
 def get_customer(customer_id: int, _: CustomerViewer, db: DbSession):
-    return partner_service.get_customer(db, customer_id)
+    return partner_service.to_customer_outs(db, [partner_service.get_customer(db, customer_id)])[0]
+
+
+@router.get(
+    "/customers/{customer_id}/orders",
+    response_model=Page[OrderSummaryOut],
+    tags=["customers"],
+    summary="Lịch sử mua hàng của khách",
+)
+def customer_orders(
+    customer_id: int,
+    _: CustomerOrderViewer,
+    db: DbSession,
+    params: Annotated[PageParams, Depends()],
+):
+    partner_service.get_customer(db, customer_id)  # 404 nếu khách không tồn tại
+    items, total = sales_service.list_orders(
+        db,
+        q=None,
+        status=None,
+        customer_id=customer_id,
+        created_by=None,
+        payment_method=None,
+        date_from=None,
+        date_to=None,
+        page=params.page,
+        page_size=params.page_size,
+        sort=params.sort,
+    )
+    return Page[OrderSummaryOut](
+        items=[sales_service.to_summary(o) for o in items],
+        page=params.page,
+        page_size=params.page_size,
+        total=total,
+    )
 
 
 @router.patch(
@@ -120,6 +164,7 @@ def get_customer(customer_id: int, _: CustomerViewer, db: DbSession):
 def update_customer(
     customer_id: int, body: CustomerUpdate, request: Request, actor: CustomerManager, db: DbSession
 ):
-    return partner_service.update_customer(
+    customer = partner_service.update_customer(
         db, customer_id, body.model_dump(exclude_unset=True), actor, client_ip(request)
     )
+    return partner_service.to_customer_outs(db, [customer])[0]

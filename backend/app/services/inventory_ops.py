@@ -26,6 +26,10 @@ def lock_inventory(db: Session, product_ids: Iterable[int]) -> dict[int, Invento
         .where(Inventory.product_id.in_(ids))
         .order_by(Inventory.product_id)
         .with_for_update()
+        # BẮT BUỘC: nếu dòng inventory đã được nạp trước đó (ví dụ kèm Product qua lazy="joined"),
+        # SQLAlchemy mặc định giữ giá trị CŨ trong bộ nhớ dù câu SELECT FOR UPDATE đọc được giá trị mới.
+        # Thiếu dòng này → kiểm tra tồn và trừ kho trên số cũ → nhiều thu ngân bán cùng 1 món hàng cuối.
+        .execution_options(populate_existing=True)
     ).all()
     locked = {row.product_id: row for row in rows}
     missing = [pid for pid in ids if pid not in locked]

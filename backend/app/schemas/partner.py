@@ -1,8 +1,9 @@
 import re
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, StringConstraints
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
 from app.schemas.common import Phone, StrictModel, empty_to_none
 from app.schemas.user import OptionalEmail
@@ -85,6 +86,8 @@ class CustomerOut(BaseModel):
     address: str | None
     note: str | None
     is_active: bool
+    order_count: int = Field(0, description="Số đơn hợp lệ (không tính đơn đã hủy)")
+    total_spent: Decimal = Field(Decimal("0"), description="Tổng tiền các đơn hợp lệ")
     created_at: datetime
     updated_at: datetime
 

@@ -1,14 +1,15 @@
 """Nghiệp vụ nhà cung cấp và khách hàng (không xóa cứng — chỉ ngừng sử dụng)."""
 
 import re
+from decimal import Decimal
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import Customer, Supplier, User
-from app.schemas.partner import CustomerCreate, SupplierCreate
+from app.models import Customer, OrderStatus, SalesOrder, Supplier, User
+from app.schemas.partner import CustomerCreate, CustomerOut, SupplierCreate
 from app.services import audit_service, code_gen
 from app.utils.pagination import apply_sort, paginate
 
@@ -118,6 +119,28 @@ def update_supplier(db: Session, supplier_id: int, changes: dict, actor: User, i
 
 
 # ====================== Khách hàng ======================
+
+
+def customer_stats(db: Session, customer_ids: list[int]) -> dict[int, tuple[int, Decimal]]:
+    """Số đơn và tổng chi tiêu tính từ các đơn COMPLETED — không lưu trùng trong bảng customers."""
+    if not customer_ids:
+        return {}
+    rows = db.execute(
+        select(SalesOrder.customer_id, func.count(), func.coalesce(func.sum(SalesOrder.total_amount), 0))
+        .where(SalesOrder.customer_id.in_(customer_ids), SalesOrder.status == OrderStatus.COMPLETED)
+        .group_by(SalesOrder.customer_id)
+    ).all()
+    return {customer_id: (count, total) for customer_id, count, total in rows}
+
+
+def to_customer_outs(db: Session, customers: list[Customer]) -> list[CustomerOut]:
+    stats = customer_stats(db, [c.id for c in customers])
+    result = []
+    for customer in customers:
+        out = CustomerOut.model_validate(customer)
+        out.order_count, out.total_spent = stats.get(customer.id, (0, Decimal("0")))
+        result.append(out)
+    return result
 
 
 def list_customers(

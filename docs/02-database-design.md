@@ -369,6 +369,7 @@ UNIQUE `(purchase_order_id, product_id)`.
 | id | BIGINT | PK |
 | code | VARCHAR(20) | UNIQUE (`HD20261025-0001`) |
 | idempotency_key | UUID | UNIQUE, NOT NULL |
+| request_hash | VARCHAR(64) | NOT NULL — SHA-256 nội dung request, phát hiện dùng lại key cho giỏ hàng khác |
 | customer_id | BIGINT | FK → customers, NULL (khách lẻ) |
 | status | VARCHAR(20) | `CHECK IN ('COMPLETED','CANCELLED')` |
 | subtotal | NUMERIC(15,2) | `>= 0` |
@@ -500,6 +501,7 @@ T2 (B): đọc lại quantity = 0 < 1 → raise OUT_OF_STOCK → ROLLBACK → HT
 ```
 
 - **Khóa theo thứ tự `product_id` tăng dần**: hai đơn có cùng sản phẩm X và Y luôn khóa X trước rồi mới tới Y, nên không thể xảy ra deadlock.
+- **Đọc lại dữ liệu khi khóa (`populate_existing=True`)**: nếu dòng `inventory` đã được nạp vào session trước đó, SQLAlchemy mặc định giữ giá trị cũ dù câu `SELECT ... FOR UPDATE` đọc được giá trị mới. Thiếu tùy chọn này thì kiểm tra tồn sẽ dựa trên số cũ, dẫn tới mất cập nhật (lost update). Lỗi này đã được test đồng thời phát hiện trong lúc phát triển.
 - **Lớp bảo vệ cuối:** ràng buộc `CHECK (quantity >= 0)` làm DB từ chối mọi câu lệnh khiến tồn âm, kể cả khi code có lỗi.
 - **Chống gửi trùng:** `idempotency_key UNIQUE`. Nếu hai request cùng key chạy song song, request thứ hai vi phạm UNIQUE; backend bắt lỗi đó, rollback và trả về đơn đã tạo.
 - **Mức isolation:** dùng READ COMMITTED (mặc định của PostgreSQL) kết hợp khóa hàng tường minh. Mức này đủ dùng và dễ giải thích hơn SERIALIZABLE (vốn đòi hỏi phải tự retry).
