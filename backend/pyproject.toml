@@ -10,3 +10,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+# Độ dài dòng code do `ruff format` lo; chú thích/chuỗi tiếng Việt dài hơn một chút không chặn lint
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# Thư mục backend/alembic (migration) trùng tên package alembic → khai báo rõ là thư viện ngoài
+known-third-party = ["alembic"]

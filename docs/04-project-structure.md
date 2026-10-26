@@ -73,5 +73,5 @@ smartstore/  (D:\management_system)
 - **Không tách lớp `repositories/`.** Ở quy mô này, mỗi repository chỉ bọc lại vài câu truy vấn SQLAlchemy, thêm boilerplate mà không đem lại lợi ích rõ ràng. Service gọi trực tiếp SQLAlchemy. Phần dùng chung thực sự (thao tác tồn kho) được gom vào `inventory_ops.py`. Khi dự án lớn hơn có thể tách sau.
 - **Hàm tính toán thuần nằm trong `pricing.py`.** Các hàm này không phụ thuộc DB, nên unit test được nhanh và đầy đủ các trường hợp biên của làm tròn và phân bổ.
 - **Router mỏng.** Router chỉ nhận request, gọi service và trả schema. Toàn bộ quy tắc nghiệp vụ nằm trong service.
-- **Transaction do service quản lý**, theo dạng `with db.begin():`. Mỗi nghiệp vụ là một transaction, nên code dễ đọc và dễ test rollback.
+- **Transaction do service quản lý.** Mỗi nghiệp vụ gọi `db.commit()` đúng một lần ở cuối. Nếu có lỗi giữa chừng, `get_db` sẽ rollback, nên không có thay đổi dở dang nào được lưu. Audit log được ghi trong cùng transaction với nghiệp vụ.
 - **Frontend tổ chức theo `features/`** chứ không gom mọi trang vào `pages/`. Mỗi module tự chứa API, hook, form và trang của mình, nên khi sửa một chức năng chỉ cần mở một thư mục.
