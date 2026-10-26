@@ -144,6 +144,10 @@ class Payment(Base):
     sales_order_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("sales_orders.id"), nullable=False, index=True
     )
+    # Có giá trị khi khoản hoàn tiền thuộc về một phiếu trả hàng (hủy đơn thì để trống)
+    sales_return_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("sales_returns.id"), index=True
+    )
     type: Mapped[str] = mapped_column(String(10), nullable=False)
     method: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
@@ -156,3 +160,69 @@ class Payment(Base):
     )
 
     order: Mapped[SalesOrder] = relationship(back_populates="payments")
+
+
+class ItemCondition:
+    RESELLABLE = "RESELLABLE"  # còn bán được → nhập lại kho
+    DAMAGED = "DAMAGED"  # hỏng → không nhập lại kho (chi phí vẫn nằm trong giá vốn = tổn thất)
+
+
+class SalesReturn(Base):
+    """Phiếu trả hàng. Một đơn có thể trả nhiều lần, mỗi lần một phiếu."""
+
+    __tablename__ = "sales_returns"
+    __table_args__ = (
+        CheckConstraint("total_refund >= 0", name="total_refund_non_negative"),
+        Index("ix_sales_returns_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    idempotency_key: Mapped[uuid.UUID] = mapped_column(Uuid, unique=True, nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    sales_order_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sales_orders.id"), nullable=False, index=True
+    )
+    reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    total_refund: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    order: Mapped[SalesOrder] = relationship(lazy="joined")
+    creator: Mapped[User] = relationship(lazy="joined")
+    items: Mapped[list["SalesReturnItem"]] = relationship(
+        back_populates="sales_return",
+        cascade="all, delete-orphan",
+        order_by="SalesReturnItem.id",
+        lazy="selectin",
+    )
+    refunds: Mapped[list[Payment]] = relationship(lazy="selectin", viewonly=True)
+
+
+class SalesReturnItem(Base):
+    __tablename__ = "sales_return_items"
+    __table_args__ = (
+        UniqueConstraint("sales_return_id", "sales_order_item_id", name="uq_sales_return_items_return_item"),
+        CheckConstraint("quantity > 0", name="quantity_positive"),
+        CheckConstraint("condition IN ('RESELLABLE', 'DAMAGED')", name="condition_valid"),
+        CheckConstraint("refund_amount >= 0", name="refund_non_negative"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    sales_return_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sales_returns.id", ondelete="CASCADE"), nullable=False
+    )
+    sales_order_item_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sales_order_items.id"), nullable=False, index=True
+    )
+    product_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("products.id"), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    condition: Mapped[str] = mapped_column(String(20), nullable=False)
+    refund_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    # Giá vốn của dòng đơn gốc — dùng để nhập lại kho và để trừ giá vốn hàng bán trong báo cáo
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(15, 4), nullable=False)
+
+    sales_return: Mapped[SalesReturn] = relationship(back_populates="items")
+    order_item: Mapped[SalesOrderItem] = relationship(lazy="joined")

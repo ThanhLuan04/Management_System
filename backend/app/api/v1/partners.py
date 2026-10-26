@@ -151,7 +151,7 @@ def customer_orders(
         sort=params.sort,
     )
     return Page[OrderSummaryOut](
-        items=[sales_service.to_summary(o) for o in items],
+        items=sales_service.order_summaries(db, items),
         page=params.page,
         page_size=params.page_size,
         total=total,

@@ -6,6 +6,7 @@ from app.services.pricing import (
     allocate_discount,
     discount_percent,
     effective_unit_cost,
+    line_refund,
     order_discount,
     purchase_line_total,
     weighted_average_cost,
@@ -84,6 +85,26 @@ def test_allocation_rounding_remainder_goes_to_largest_line():
     result = allocate_discount([D(30000), D(30000), D(30000)], D(10000))
     assert sum(result) == D(10000)
     assert result == [D(3334), D(3333), D(3333)]
+
+
+def test_refund_example_from_spec():
+    # docs/02 §4.3: dòng 5 hộp, thành tiền sau giảm 54.000, trả 2 → 21.600
+    assert line_refund(D(54000), 5, 0, D(0), 2) == D(21600)
+
+
+def test_refunds_over_several_returns_add_up_to_line_total():
+    # 3 sản phẩm, thành tiền 10.000 (3.333,33/cái): trả lần lượt 1 + 1 + 1
+    line_total, sold = D(10000), 3
+    first = line_refund(line_total, sold, 0, D(0), 1)
+    second = line_refund(line_total, sold, 1, first, 1)
+    last = line_refund(line_total, sold, 2, first + second, 1)
+
+    assert (first, second, last) == (D(3333), D(3333), D(3334))
+    assert first + second + last == line_total
+
+
+def test_returning_everything_at_once_refunds_exact_line_total():
+    assert line_refund(D("99999"), 7, 0, D(0), 7) == D("99999")
 
 
 @pytest.mark.parametrize("lines", [[1], [7, 3], [99999, 1, 1], [12345, 67890, 11111, 5]])

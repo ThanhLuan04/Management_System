@@ -9,22 +9,26 @@ import hashlib
 import json
 import re
 import uuid
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import exists, or_, select
+from sqlalchemy import case, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
 from app.models import (
     Customer,
+    ItemCondition,
     OrderStatus,
     Payment,
     PaymentMethod,
     Product,
     SalesOrder,
     SalesOrderItem,
+    SalesReturn,
+    SalesReturnItem,
     TransactionType,
     User,
 )
@@ -32,7 +36,7 @@ from app.schemas.sales import OrderCreate, OrderItemOut, OrderOut, OrderSummaryO
 from app.services import audit_service, code_gen, inventory_ops, settings_service
 from app.services.pricing import allocate_discount, discount_percent, order_discount, round_money
 from app.utils.pagination import apply_sort, paginate
-from app.utils.time import vn_day_range, vn_today
+from app.utils.time import utcnow, vn_date_of, vn_day_range, vn_today
 
 SORTABLE_FIELDS = {
     "code": SalesOrder.code,
@@ -53,29 +57,84 @@ def request_fingerprint(data: OrderCreate) -> str:
 # ---------- Chuyển đổi sang response ----------
 
 
-def _payment_method(order: SalesOrder) -> str | None:
+def payment_method_of(order: SalesOrder) -> str | None:
     return next((p.method for p in order.payments if p.type == "PAYMENT"), None)
 
 
-def to_summary(order: SalesOrder) -> OrderSummaryOut:
+@dataclass(frozen=True)
+class Returned:
+    """Tổng đã trả của một dòng đơn qua mọi phiếu trả."""
+
+    quantity: int = 0
+    refunded: Decimal = Decimal("0")
+    restocked_cost: Decimal = Decimal("0")  # giá vốn hàng trả còn bán được (đã nhập lại kho)
+
+
+def returned_by_item(db: Session, order_ids: list[int]) -> dict[int, Returned]:
+    """Một truy vấn cho nhiều đơn: order_item_id → tổng SL đã trả, tiền đã hoàn, giá vốn đã nhập lại."""
+    if not order_ids:
+        return {}
+    restocked = case(
+        (
+            SalesReturnItem.condition == ItemCondition.RESELLABLE,
+            SalesReturnItem.quantity * SalesReturnItem.unit_cost,
+        ),
+        else_=0,
+    )
+    rows = db.execute(
+        select(
+            SalesReturnItem.sales_order_item_id,
+            func.sum(SalesReturnItem.quantity),
+            func.sum(SalesReturnItem.refund_amount),
+            func.sum(restocked),
+        )
+        .join(SalesReturn, SalesReturn.id == SalesReturnItem.sales_return_id)
+        .where(SalesReturn.sales_order_id.in_(order_ids))
+        .group_by(SalesReturnItem.sales_order_item_id)
+    ).all()
+    return {
+        item_id: Returned(int(qty), refunded, restocked_cost)
+        for item_id, qty, refunded, restocked_cost in rows
+    }
+
+
+def return_status(order: SalesOrder, returned: dict[int, Returned]) -> str:
+    sold = sum(item.quantity for item in order.items)
+    back = sum(returned.get(item.id, Returned()).quantity for item in order.items)
+    if back == 0:
+        return "NONE"
+    return "FULL" if back >= sold else "PARTIAL"
+
+
+def to_summary(order: SalesOrder, returned: dict[int, Returned]) -> OrderSummaryOut:
     return OrderSummaryOut(
         id=order.id,
         code=order.code,
         status=order.status,
+        return_status=return_status(order, returned),
         customer=order.customer,
         subtotal=order.subtotal,
         discount_amount=order.discount_amount,
         total_amount=order.total_amount,
         item_count=len(order.items),
-        payment_method=_payment_method(order),
+        payment_method=payment_method_of(order),
         created_by=order.creator,
         created_at=order.created_at,
     )
 
 
-def to_out(order: SalesOrder, include_cost: bool) -> OrderOut:
+def order_summaries(db: Session, orders: list[SalesOrder]) -> list[OrderSummaryOut]:
+    returned = returned_by_item(db, [o.id for o in orders])
+    return [to_summary(o, returned) for o in orders]
+
+
+def to_out(db: Session, order: SalesOrder, include_cost: bool) -> OrderOut:
+    returned = returned_by_item(db, [order.id])
+    completed = order.status == OrderStatus.COMPLETED
+
     items = []
     for item in order.items:
+        back = returned.get(item.id, Returned())
         data = {
             "id": item.id,
             "product_id": item.product_id,
@@ -87,26 +146,41 @@ def to_out(order: SalesOrder, include_cost: bool) -> OrderOut:
             "line_subtotal": item.line_subtotal,
             "discount_allocated": item.discount_allocated,
             "line_total": item.line_total,
+            "returned_quantity": back.quantity,
+            "returnable_quantity": item.quantity - back.quantity if completed else 0,
         }
         if include_cost:
             data["unit_cost"] = item.unit_cost
         items.append(OrderItemOut.model_validate(data))
 
+    returns = db.scalars(
+        select(SalesReturn).where(SalesReturn.sales_order_id == order.id).order_by(SalesReturn.id)
+    ).unique()
     data = {
-        **to_summary(order).model_dump(),
+        **to_summary(order, returned).model_dump(),
         "discount_type": order.discount_type,
         "discount_value": order.discount_value,
         "note": order.note,
         "items": items,
         "payments": [PaymentOut.model_validate(p) for p in order.payments],
+        "returns": [
+            {"id": r.id, "code": r.code, "total_refund": r.total_refund, "created_at": r.created_at}
+            for r in returns
+        ],
         "cancelled_by": order.canceller
         and {"id": order.canceller.id, "full_name": order.canceller.full_name},
         "cancelled_at": order.cancelled_at,
         "cancel_reason": order.cancel_reason,
     }
     if include_cost:
-        cost = sum((item.quantity * item.unit_cost for item in order.items), Decimal("0"))
-        data["gross_profit"] = round_money(order.total_amount - cost)
+        if completed:
+            # Lợi nhuận gộp = (doanh thu − tiền hoàn) − (giá vốn đã bán − giá vốn hàng trả đã nhập lại kho)
+            refunds = sum((b.refunded for b in returned.values()), Decimal("0"))
+            restocked = sum((b.restocked_cost for b in returned.values()), Decimal("0"))
+            cost = sum((item.quantity * item.unit_cost for item in order.items), Decimal("0"))
+            data["gross_profit"] = round_money(order.total_amount - refunds - (cost - restocked))
+        else:
+            data["gross_profit"] = Decimal("0.00")  # đơn đã hủy: hoàn toàn bộ tiền và hàng
     return OrderOut.model_validate(data)
 
 
@@ -345,3 +419,81 @@ def create_order(
     db.commit()
     db.expire_all()
     return get_order(db, order.id), True
+
+
+# ---------- Hủy đơn ----------
+
+
+def lock_order(db: Session, order_id: int) -> SalesOrder:
+    """Khóa dòng đơn hàng: hủy đơn và các phiếu trả của cùng một đơn sẽ chạy lần lượt, không chồng lên nhau."""
+    order = db.scalar(
+        select(SalesOrder)
+        .where(SalesOrder.id == order_id)
+        .with_for_update(of=SalesOrder)
+        .execution_options(populate_existing=True)
+    )
+    if order is None:
+        raise AppError("NOT_FOUND", "Không tìm thấy đơn hàng", 404)
+    return order
+
+
+def cancel_order(db: Session, order_id: int, reason: str, actor: User, ip: str | None) -> SalesOrder:
+    """
+    Hủy đơn: hoàn toàn bộ hàng về kho (theo giá vốn lúc bán) và hoàn toàn bộ tiền.
+    Chỉ trong cùng ngày bán và khi chưa có phiếu trả — để báo cáo các ngày đã chốt không bị thay đổi
+    và để không phải tách phần đã trả / chưa trả.
+    """
+    order = lock_order(db, order_id)
+    if order.status != OrderStatus.COMPLETED:
+        raise AppError("INVALID_STATE", "Đơn hàng đã được hủy trước đó", 409, {"status": order.status})
+    if db.scalar(select(SalesReturn.id).where(SalesReturn.sales_order_id == order.id).limit(1)) is not None:
+        raise AppError(
+            "CANCEL_NOT_ALLOWED", "Đơn đã có phiếu trả hàng, không thể hủy", 409, {"reason": "HAS_RETURNS"}
+        )
+    if vn_date_of(order.created_at) != vn_today():
+        raise AppError(
+            "CANCEL_NOT_ALLOWED",
+            "Chỉ hủy được đơn trong ngày bán. Đơn của ngày trước hãy xử lý bằng trả hàng",
+            409,
+            {"reason": "NOT_SAME_DAY"},
+        )
+
+    now = utcnow()
+    order.status = OrderStatus.CANCELLED
+    order.cancelled_by = actor.id
+    order.cancelled_at = now
+    order.cancel_reason = reason
+
+    inventories = inventory_ops.lock_inventory(db, (item.product_id for item in order.items))
+    for item in order.items:
+        inventory_ops.receive(
+            db,
+            inventories[item.product_id],
+            item.quantity,
+            item.unit_cost,
+            tx_type=TransactionType.ORDER_CANCEL,
+            reference_type="sales_order",
+            reference_id=order.id,
+            actor_id=actor.id,
+            note=reason[:255],
+        )
+
+    method = payment_method_of(order)
+    if order.total_amount > 0 and method is not None:
+        order.payments.append(
+            Payment(type="REFUND", method=method, amount=order.total_amount, created_by=actor.id)
+        )
+
+    audit_service.record(
+        db,
+        action="ORDER_CANCEL",
+        user_id=actor.id,
+        entity_type="sales_order",
+        entity_id=order.id,
+        old_values={"status": OrderStatus.COMPLETED},
+        new_values={"status": OrderStatus.CANCELLED, "reason": reason},
+        ip_address=ip,
+    )
+    db.commit()
+    db.expire_all()
+    return get_order(db, order.id)

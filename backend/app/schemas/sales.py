@@ -103,7 +103,16 @@ class OrderItemOut(BaseModel):
     line_subtotal: Decimal
     discount_allocated: Decimal
     line_total: Decimal
+    returned_quantity: int = Field(description="Tổng số đã trả qua các phiếu trả")
+    returnable_quantity: int = Field(description="Số còn được trả (0 nếu đơn đã hủy)")
     unit_cost: Decimal | None = Field(None, description=_COST_NOTE)
+
+
+class ReturnRef(BaseModel):
+    id: int
+    code: str
+    total_refund: Decimal
+    created_at: datetime
 
 
 class PaymentOut(BaseModel):
@@ -123,6 +132,9 @@ class OrderSummaryOut(BaseModel):
     id: int
     code: str
     status: str
+    return_status: Literal["NONE", "PARTIAL", "FULL"] = Field(
+        description="Tính từ các phiếu trả, không lưu trong DB"
+    )
     customer: CustomerRef | None
     subtotal: Decimal
     discount_amount: Decimal
@@ -139,7 +151,76 @@ class OrderOut(OrderSummaryOut):
     note: str | None
     items: list[OrderItemOut]
     payments: list[PaymentOut]
+    returns: list[ReturnRef]
     cancelled_by: UserRef | None
     cancelled_at: datetime | None
     cancel_reason: str | None
-    gross_profit: Decimal | None = Field(None, description=f"Doanh thu đơn − giá vốn. {_COST_NOTE}")
+    gross_profit: Decimal | None = Field(
+        None, description=f"(Doanh thu − tiền hoàn) − (giá vốn − giá vốn hàng trả nhập lại kho). {_COST_NOTE}"
+    )
+
+
+Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=255)]
+
+
+class CancelRequest(StrictModel):
+    reason: Reason
+
+
+# ---------- Trả hàng ----------
+
+
+class ReturnItemIn(StrictModel):
+    order_item_id: int
+    quantity: Annotated[int, Field(ge=1, le=10_000)]
+    condition: Literal["RESELLABLE", "DAMAGED"] = Field(
+        description="RESELLABLE: còn bán được (nhập lại kho) · DAMAGED: hỏng (không nhập lại kho)"
+    )
+
+
+class ReturnCreate(StrictModel):
+    """Tiền hoàn do backend tính theo giá sau giảm của từng dòng đơn gốc."""
+
+    reason: Reason
+    items: Annotated[list[ReturnItemIn], Field(min_length=1, max_length=100)]
+
+    @field_validator("items")
+    @classmethod
+    def unique_items(cls, items: list[ReturnItemIn]) -> list[ReturnItemIn]:
+        if len({item.order_item_id for item in items}) != len(items):
+            raise ValueError("Mỗi dòng hàng chỉ xuất hiện một lần trong phiếu trả")
+        return items
+
+
+class OrderRef(BaseModel):
+    id: int
+    code: str
+
+
+class ReturnItemOut(BaseModel):
+    id: int
+    order_item_id: int
+    product_id: int
+    sku: str
+    product_name: str
+    quantity: int
+    condition: str
+    refund_amount: Decimal
+    unit_cost: Decimal | None = Field(None, description=_COST_NOTE)
+
+
+class ReturnSummaryOut(BaseModel):
+    id: int
+    code: str
+    order: OrderRef
+    customer: CustomerRef | None
+    reason: str
+    total_refund: Decimal
+    refund_method: str | None
+    item_count: int
+    created_by: UserRef
+    created_at: datetime
+
+
+class ReturnOut(ReturnSummaryOut):
+    items: list[ReturnItemOut]

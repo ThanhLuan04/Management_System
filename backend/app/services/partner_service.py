@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import Customer, OrderStatus, SalesOrder, Supplier, User
+from app.models import Customer, OrderStatus, SalesOrder, SalesReturn, Supplier, User
 from app.schemas.partner import CustomerCreate, CustomerOut, SupplierCreate
 from app.services import audit_service, code_gen
 from app.utils.pagination import apply_sort, paginate
@@ -122,15 +122,27 @@ def update_supplier(db: Session, supplier_id: int, changes: dict, actor: User, i
 
 
 def customer_stats(db: Session, customer_ids: list[int]) -> dict[int, tuple[int, Decimal]]:
-    """Số đơn và tổng chi tiêu tính từ các đơn COMPLETED — không lưu trùng trong bảng customers."""
+    """
+    Số đơn và tổng chi tiêu tính từ dữ liệu gốc (không lưu trùng trong bảng customers):
+    tổng chi tiêu = tổng tiền các đơn COMPLETED − tiền đã hoàn qua phiếu trả hàng.
+    """
     if not customer_ids:
         return {}
-    rows = db.execute(
-        select(SalesOrder.customer_id, func.count(), func.coalesce(func.sum(SalesOrder.total_amount), 0))
-        .where(SalesOrder.customer_id.in_(customer_ids), SalesOrder.status == OrderStatus.COMPLETED)
+    completed = (SalesOrder.customer_id.in_(customer_ids), SalesOrder.status == OrderStatus.COMPLETED)
+    orders = db.execute(
+        select(SalesOrder.customer_id, func.count(), func.sum(SalesOrder.total_amount))
+        .where(*completed)
         .group_by(SalesOrder.customer_id)
     ).all()
-    return {customer_id: (count, total) for customer_id, count, total in rows}
+    refunds = dict(
+        db.execute(
+            select(SalesOrder.customer_id, func.sum(SalesReturn.total_refund))
+            .join(SalesReturn, SalesReturn.sales_order_id == SalesOrder.id)
+            .where(*completed)
+            .group_by(SalesOrder.customer_id)
+        ).all()
+    )
+    return {cid: (count, total - refunds.get(cid, Decimal("0"))) for cid, count, total in orders}
 
 
 def to_customer_outs(db: Session, customers: list[Customer]) -> list[CustomerOut]:

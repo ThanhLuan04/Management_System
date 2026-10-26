@@ -74,6 +74,20 @@ def allocate_discount(line_subtotals: list[Decimal], discount: Decimal) -> list[
     return allocated
 
 
+def line_refund(
+    line_total: Decimal, sold_qty: int, returned_qty: int, refunded_amount: Decimal, return_qty: int
+) -> Decimal:
+    """
+    Tiền hoàn cho `return_qty` đơn vị của một dòng đơn, theo giá SAU giảm giá đã phân bổ.
+    - Trả một phần: round(line_total × return_qty / sold_qty) đến đồng.
+    - Trả nốt phần còn lại: line_total − số đã hoàn trước đó → tổng tiền hoàn của dòng luôn đúng bằng line_total,
+      không lệch vài đồng do làm tròn qua nhiều lần trả.
+    """
+    if return_qty == sold_qty - returned_qty:
+        return line_total - refunded_amount
+    return round_dong(line_total * return_qty / sold_qty)
+
+
 def effective_unit_cost(line_total: Decimal, quantity: int) -> Decimal:
     """Giá nhập thực tế của 1 đơn vị sau chiết khấu dòng — giá dùng để tính giá vốn bình quân."""
     return round_cost(line_total / quantity)

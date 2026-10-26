@@ -2,7 +2,16 @@
 from app.models.catalog import Brand, Category, Inventory, Product
 from app.models.partner import Customer, Supplier
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus
-from app.models.sales import OrderStatus, Payment, PaymentMethod, SalesOrder, SalesOrderItem
+from app.models.sales import (
+    ItemCondition,
+    OrderStatus,
+    Payment,
+    PaymentMethod,
+    SalesOrder,
+    SalesOrderItem,
+    SalesReturn,
+    SalesReturnItem,
+)
 from app.models.stock import (
     AdjustmentType,
     InventoryTransaction,
@@ -22,6 +31,7 @@ __all__ = [
     "Customer",
     "Inventory",
     "InventoryTransaction",
+    "ItemCondition",
     "OrderStatus",
     "Payment",
     "PaymentMethod",
@@ -33,6 +43,8 @@ __all__ = [
     "Role",
     "SalesOrder",
     "SalesOrderItem",
+    "SalesReturn",
+    "SalesReturnItem",
     "Setting",
     "StockAdjustment",
     "StockAdjustmentItem",

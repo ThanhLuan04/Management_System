@@ -9,14 +9,16 @@ from app.core.errors import AppError
 from app.core.permissions import Permission, permissions_for
 from app.models import User
 from app.schemas.common import Page, PageParams
-from app.schemas.sales import OrderCreate, OrderOut, OrderSummaryOut
-from app.services import sales_service
+from app.schemas.sales import CancelRequest, OrderCreate, OrderOut, OrderSummaryOut, ReturnCreate, ReturnOut
+from app.services import return_service, sales_service
 from app.utils.dates import validate_date_range
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 OrderViewer = Annotated[User, Depends(require_permission(Permission.ORDERS_VIEW))]
 OrderCreator = Annotated[User, Depends(require_permission(Permission.ORDERS_CREATE))]
+OrderCanceller = Annotated[User, Depends(require_permission(Permission.ORDERS_CANCEL))]
+ReturnCreator = Annotated[User, Depends(require_permission(Permission.RETURNS_CREATE))]
 
 
 def _can_view_cost(user: User) -> bool:
@@ -51,7 +53,7 @@ def list_orders(
         sort=params.sort,
     )
     return Page[OrderSummaryOut](
-        items=[sales_service.to_summary(o) for o in items],
+        items=sales_service.order_summaries(db, items),
         page=params.page,
         page_size=params.page_size,
         total=total,
@@ -82,11 +84,50 @@ def create_order(
     order, created = sales_service.create_order(db, body, idempotency_key, actor, client_ip(request))
     if not created:
         response.status_code = status.HTTP_200_OK
-    return sales_service.to_out(order, _can_view_cost(actor))
+    return sales_service.to_out(db, order, _can_view_cost(actor))
 
 
 @router.get(
     "/{order_id}", response_model=OrderOut, response_model_exclude_unset=True, summary="Chi tiết đơn hàng"
 )
 def get_order(order_id: int, user: OrderViewer, db: DbSession):
-    return sales_service.to_out(sales_service.get_order(db, order_id), _can_view_cost(user))
+    return sales_service.to_out(db, sales_service.get_order(db, order_id), _can_view_cost(user))
+
+
+@router.post(
+    "/{order_id}/cancel",
+    response_model=OrderOut,
+    response_model_exclude_unset=True,
+    summary="Hủy đơn (trong ngày bán, chưa có phiếu trả)",
+)
+def cancel_order(order_id: int, body: CancelRequest, request: Request, actor: OrderCanceller, db: DbSession):
+    order = sales_service.cancel_order(db, order_id, body.reason, actor, client_ip(request))
+    return sales_service.to_out(db, order, _can_view_cost(actor))
+
+
+@router.post(
+    "/{order_id}/returns",
+    response_model=ReturnOut,
+    response_model_exclude_unset=True,
+    status_code=status.HTTP_201_CREATED,
+    tags=["returns"],
+    summary="Trả hàng cho một đơn",
+    description="Bắt buộc header **Idempotency-Key** (UUID) như khi tạo đơn.",
+)
+def create_return(
+    order_id: int,
+    body: ReturnCreate,
+    request: Request,
+    response: Response,
+    actor: ReturnCreator,
+    db: DbSession,
+    idempotency_key: Annotated[uuid.UUID | None, Header(alias="Idempotency-Key")] = None,
+):
+    if idempotency_key is None:
+        raise AppError("IDEMPOTENCY_KEY_REQUIRED", "Thiếu header Idempotency-Key (UUID)", 400)
+    sales_return, created = return_service.create_return(
+        db, order_id, body, idempotency_key, actor, client_ip(request)
+    )
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return return_service.to_out(sales_return, _can_view_cost(actor))
