@@ -5,6 +5,7 @@ Test chạy trên database riêng (TEST_DATABASE_URL, ví dụ smartstore_test),
 Phải đổi DATABASE_URL trước khi import bất kỳ module nào tạo engine (app.db.session, app.main).
 """
 
+import json
 import os
 
 from app.core.config import BACKEND_DIR, Settings, get_settings
@@ -32,6 +33,7 @@ from app.db.base import Base  # noqa: E402
 from app.db.session import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Role, User  # noqa: E402  — import gói models cũng nạp toàn bộ bảng vào Base.metadata
+from app.services.settings_service import DEFAULTS as SETTING_DEFAULTS  # noqa: E402
 
 DEFAULT_PASSWORD = "Passw0rd!"
 # Hash một lần cho cả phiên test: Argon2 cố ý chậm, hash lại cho mỗi user làm test chậm đáng kể
@@ -61,7 +63,12 @@ def _clean_tables(tmp_path):
     with engine.begin() as conn:
         # Bảng mới thêm vào models sẽ tự được dọn, không cần sửa danh sách ở đây
         conn.execute(text(f"TRUNCATE {_TRUNCATE_TABLES} RESTART IDENTITY"))
-        conn.execute(text("UPDATE settings SET updated_by = NULL"))
+        # Đưa cài đặt về mặc định: test trước đổi giới hạn giảm giá không được ảnh hưởng test sau
+        for key, value in SETTING_DEFAULTS.items():
+            conn.execute(
+                text("UPDATE settings SET value = CAST(:value AS jsonb), updated_by = NULL WHERE key = :key"),
+                {"key": key, "value": json.dumps(value)},
+            )
         conn.execute(text("DELETE FROM users"))
     login_rate_limiter.reset()
 

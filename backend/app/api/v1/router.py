@@ -9,7 +9,9 @@ from app.api.v1 import (
     partners,
     products,
     purchases,
+    reports,
     returns,
+    system,
     users,
 )
 
@@ -24,3 +26,5 @@ api_router.include_router(purchases.router)
 api_router.include_router(inventory.router)
 api_router.include_router(orders.router)
 api_router.include_router(returns.router)
+api_router.include_router(reports.router)
+api_router.include_router(system.router)
