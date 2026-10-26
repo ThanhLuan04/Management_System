@@ -2,13 +2,30 @@ import re
 from typing import Annotated, Any
 
 from fastapi import Query
-from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, StringConstraints
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
 
 class StrictModel(BaseModel):
     """Schema request: cắt khoảng trắng hai đầu và từ chối trường lạ (ví dụ client cố gửi 'quantity' vào form sản phẩm)."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class ErrorDetail(BaseModel):
+    field: str
+    message: str
+
+
+class ErrorBody(BaseModel):
+    code: str = Field(examples=["VALIDATION_ERROR"])
+    message: str = Field(examples=["Dữ liệu không hợp lệ"])
+    details: list[ErrorDetail] | dict[str, Any] | None = None
+
+
+class ErrorResponse(BaseModel):
+    """Định dạng lỗi thống nhất của mọi API (dùng để mô tả trong Swagger)."""
+
+    error: ErrorBody
 
 
 class Page[T](BaseModel):

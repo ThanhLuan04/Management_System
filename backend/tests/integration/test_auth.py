@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.permissions import RoleCode
 from app.models import AuditLog, RefreshToken, User
 from app.utils.time import utcnow
@@ -41,7 +42,7 @@ def test_login_success_returns_token_user_and_httponly_refresh_cookie(client, ma
     assert response.status_code == 200
     body = response.json()
     assert body["token_type"] == "bearer"
-    assert body["expires_in"] == 900
+    assert body["expires_in"] == get_settings().access_token_expire_minutes * 60
     assert body["user"]["username"] == "thungan"
     assert body["user"]["role"]["code"] == "CASHIER"
     assert "orders.create" in body["user"]["permissions"]

@@ -37,9 +37,13 @@ def list_users(
 ) -> tuple[list[User], int]:
     stmt = select(User).join(User.role)
     if q:
-        pattern = f"%{q.strip()}%"
+        q = q.strip()
         stmt = stmt.where(
-            or_(User.username.ilike(pattern), User.full_name.ilike(pattern), User.email.ilike(pattern))
+            or_(
+                User.username.icontains(q, autoescape=True),
+                User.full_name.icontains(q, autoescape=True),
+                User.email.icontains(q, autoescape=True),
+            )
         )
     if role:
         stmt = stmt.where(Role.code == role.upper())

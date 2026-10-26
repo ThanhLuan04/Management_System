@@ -28,6 +28,29 @@ def test_validation_error_lists_fields_without_echoing_input(client):
     assert "bi-mat-123" not in response.text
 
 
+def test_malformed_json_body_gets_readable_error(client):
+    response = client.post(
+        "/api/v1/auth/login",
+        content='{"username": "admin", "password": <id>}',
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 422
+    detail = response.json()["error"]["details"][0]
+    assert detail["field"] == "body"
+    assert "JSON hợp lệ" in detail["message"]
+
+
+def test_openapi_documents_real_error_format(client):
+    schema = client.get("/openapi.json").json()
+
+    login_422 = schema["paths"]["/api/v1/auth/login"]["post"]["responses"]["422"]
+    assert login_422["content"]["application/json"]["schema"]["$ref"] == "#/components/schemas/ErrorResponse"
+    assert "HTTPValidationError" not in schema["components"]["schemas"]
+    error_body = schema["components"]["schemas"]["ErrorBody"]
+    assert {"code", "message", "details"} <= set(error_body["properties"])
+
+
 def test_unhandled_exception_returns_generic_500_without_stack_trace(client, caplog):
     def boom():
         raise RuntimeError("chi tiết nội bộ: connection string postgresql://...")

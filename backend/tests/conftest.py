@@ -28,9 +28,10 @@ from sqlalchemy import text  # noqa: E402
 from app.api.v1.auth import login_rate_limiter  # noqa: E402
 from app.core.permissions import RoleCode  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
+from app.db.base import Base  # noqa: E402
 from app.db.session import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Role, User  # noqa: E402
+from app.models import Role, User  # noqa: E402  — import gói models cũng nạp toàn bộ bảng vào Base.metadata
 
 DEFAULT_PASSWORD = "Passw0rd!"
 # Hash một lần cho cả phiên test: Argon2 cố ý chậm, hash lại cho mỗi user làm test chậm đáng kể
@@ -47,16 +48,29 @@ def _migrated_database():
     engine.dispose()
 
 
+# Bảng dữ liệu nền do migration seed → giữ lại giữa các test
+_SEEDED_TABLES = {"roles", "settings"}
+_TRUNCATE_TABLES = ", ".join(
+    t.name for t in Base.metadata.sorted_tables if t.name not in _SEEDED_TABLES | {"users"}
+)
+
+
 @pytest.fixture(autouse=True)
-def _clean_tables():
+def _clean_tables(tmp_path):
     """Mỗi test bắt đầu với dữ liệu sạch (giữ lại roles/settings đã seed bởi migration)."""
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM audit_logs"))
-        conn.execute(text("DELETE FROM refresh_tokens"))
+        # Bảng mới thêm vào models sẽ tự được dọn, không cần sửa danh sách ở đây
+        conn.execute(text(f"TRUNCATE {_TRUNCATE_TABLES} RESTART IDENTITY"))
         conn.execute(text("UPDATE settings SET updated_by = NULL"))
         conn.execute(text("DELETE FROM users"))
     login_rate_limiter.reset()
+
+    # Ảnh upload trong test ghi vào thư mục tạm, không lẫn vào backend/uploads
+    settings = get_settings()
+    original_upload_dir = settings.upload_dir
+    settings.upload_dir = tmp_path / "uploads"
     yield
+    settings.upload_dir = original_upload_dir
 
 
 @pytest.fixture

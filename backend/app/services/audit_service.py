@@ -1,3 +1,5 @@
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -8,10 +10,19 @@ from app.models import AuditLog
 _SENSITIVE_KEYS = {"password", "password_hash", "new_password", "current_password", "token", "token_hash"}
 
 
+def _json_safe(value: Any) -> Any:
+    # JSONB không nhận Decimal/datetime; tiền giữ dạng chuỗi để không mất độ chính xác
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, datetime | date):
+        return value.isoformat()
+    return value
+
+
 def _scrub(values: dict[str, Any] | None) -> dict[str, Any] | None:
     if values is None:
         return None
-    return {k: v for k, v in values.items() if k not in _SENSITIVE_KEYS}
+    return {k: _json_safe(v) for k, v in values.items() if k not in _SENSITIVE_KEYS}
 
 
 def record(

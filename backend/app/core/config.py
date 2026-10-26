@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     login_lock_minutes: int = 15
     login_rate_limit_per_minute: int = 10
 
+    # Ảnh sản phẩm lưu trên đĩa server (MVP); được phục vụ tại /uploads/...
+    upload_dir: Path = BACKEND_DIR / "uploads"
+    max_image_bytes: int = 2 * 1024 * 1024
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
