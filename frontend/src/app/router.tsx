@@ -1,6 +1,10 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 
 import { LoginPage } from "@/features/auth/LoginPage";
+import { CategoriesPage } from "@/features/catalog/CategoriesPage";
+import { ProductDetailPage } from "@/features/catalog/ProductDetailPage";
+import { ProductFormPage } from "@/features/catalog/ProductFormPage";
+import { ProductListPage } from "@/features/catalog/ProductListPage";
 import { P, type Permission } from "@/features/auth/permissions";
 import { AppLayout, type RouteHandle } from "@/layouts/AppLayout";
 import { ComingSoon, NotFound } from "@/pages/Placeholders";
@@ -21,8 +25,6 @@ const upcoming: [string, string, Permission | null][] = [
   ["orders/*", "Đơn hàng", P.ORDERS_VIEW],
   ["returns", "Trả hàng", P.ORDERS_VIEW],
   ["customers/*", "Khách hàng", P.CUSTOMERS_VIEW],
-  ["products/*", "Sản phẩm", P.CATALOG_VIEW],
-  ["categories", "Danh mục", P.CATALOG_VIEW],
   ["purchases/*", "Nhập hàng", P.PURCHASES_MANAGE],
   ["inventory", "Tồn kho", P.INVENTORY_VIEW],
   ["suppliers", "Nhà cung cấp", P.SUPPLIERS_MANAGE],
@@ -59,6 +61,17 @@ export const router = createBrowserRouter([
           };
         },
       },
+      {
+        path: "products",
+        handle: { crumb: "Sản phẩm" } satisfies RouteHandle,
+        children: [
+          { index: true, element: <RequirePermission permission={P.CATALOG_VIEW}><ProductListPage /></RequirePermission> },
+          page("new", "Thêm sản phẩm", P.CATALOG_MANAGE, <ProductFormPage key="new" />),
+          page(":id", "Chi tiết", P.CATALOG_VIEW, <ProductDetailPage />),
+          page(":id/edit", "Sửa sản phẩm", P.CATALOG_MANAGE, <ProductFormPage key="edit" />),
+        ],
+      },
+      page("categories", "Danh mục & thương hiệu", P.CATALOG_VIEW, <CategoriesPage />),
       ...upcoming.map(([path, crumb, permission]) => page(path, crumb, permission, <ComingSoon title={crumb} />)),
       { path: "*", element: <NotFound /> },
     ],

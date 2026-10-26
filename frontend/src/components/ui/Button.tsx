@@ -19,6 +19,21 @@ const sizes = {
   icon: "h-9 w-9",
 } as const;
 
+/** Class kiểu dáng của nút — dùng cho <Link> trông như nút (không lồng <button> trong <a>). */
+export function buttonClass({
+  variant = "default",
+  size = "md",
+  className,
+}: { variant?: keyof typeof variants; size?: keyof typeof sizes; className?: string } = {}) {
+  return cn(
+    "inline-flex items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors",
+    "focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none",
+    variants[variant],
+    sizes[size],
+    className,
+  );
+}
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: keyof typeof variants;
   size?: keyof typeof sizes;
