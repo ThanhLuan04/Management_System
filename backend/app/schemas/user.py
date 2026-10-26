@@ -18,6 +18,15 @@ class RoleOut(BaseModel):
     name: str
 
 
+class UserRef(BaseModel):
+    """Thông tin rút gọn của người thao tác, dùng trong chứng từ (người tạo, người xác nhận...)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
