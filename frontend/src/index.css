@@ -1,9 +1,60 @@
 @import "tailwindcss";
 
-@theme {
+/*
+ * Design tokens — docs/05-ui-design-system.md.
+ * Component chỉ dùng tên vai trò (bg-primary, text-muted…), không dùng mã màu trực tiếp.
+ */
+:root {
+  --background: #f8fafc;
+  --card: #ffffff;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --destructive: #dc2626;
+  --info: #0284c7;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-active: #1e293b;
+
+  /* Biểu đồ (palette đã kiểm tra mù màu bằng dataviz validator) */
+  --chart-surface: #ffffff;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #898781;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+}
+
+@theme inline {
   --font-sans: "Be Vietnam Pro", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-info: var(--info);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-background text-foreground antialiased;
+}
+
+/* Số trong bảng / trục căn thẳng hàng; số lớn đứng một mình (thẻ KPI) giữ chữ số tỉ lệ */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
