@@ -4,8 +4,9 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 
-// Dùng 127.0.0.1 vì "localhost" có thể phân giải sang IPv6 (::1) trong khi uvicorn chỉ nghe IPv4
-const BACKEND = "http://127.0.0.1:8000";
+// Dùng 127.0.0.1 vì "localhost" có thể phân giải sang IPv6 (::1) trong khi uvicorn chỉ nghe IPv4.
+// E2E (Playwright) trỏ sang backend riêng qua SMARTSTORE_API_URL.
+const BACKEND = process.env.SMARTSTORE_API_URL ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -22,6 +23,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    include: ["src/**/*.test.{ts,tsx}"], // e2e/ là Playwright, không chạy bằng Vitest
     setupFiles: ["./src/test/setup.ts"],
     css: false,
     // Xóa lịch sử gọi của mọi mock giữa các test (thay cho mockClear/mockReset thủ công trong beforeEach)

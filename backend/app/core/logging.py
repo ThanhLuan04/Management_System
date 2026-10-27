@@ -10,6 +10,17 @@ request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 
 logger = logging.getLogger("app.request")
 
+# Backend chỉ trả JSON và ảnh tải lên → chặn đoán kiểu nội dung, nhúng iframe và mọi tài nguyên đi kèm.
+# HSTS do reverse proxy HTTPS đặt khi deploy.
+SECURITY_HEADERS = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"referrer-policy", b"no-referrer"),
+]
+API_CSP = (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'")
+# Swagger UI (chỉ có ngoài production) tải script/CSS từ CDN nên không gắn CSP chặt
+_DOCS_PATHS = ("/docs", "/openapi.json")
+
 
 class RequestIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
@@ -34,7 +45,7 @@ def setup_logging(level: str = "INFO") -> None:
 
 class RequestContextMiddleware:
     """
-    Gắn X-Request-ID cho mỗi request, ghi access log và bắt mọi lỗi chưa được xử lý.
+    Gắn X-Request-ID và header bảo mật cho mỗi request, ghi access log và bắt mọi lỗi chưa được xử lý.
 
     Lỗi bất ngờ được ghi đầy đủ traceback vào log server, nhưng client chỉ nhận
     {"error": {"code": "INTERNAL_ERROR", ...}} kèm request_id để đối chiếu — không lộ stack trace.
@@ -62,6 +73,9 @@ class RequestContextMiddleware:
                 status_code = message["status"]
                 message.setdefault("headers", [])
                 message["headers"].append((b"x-request-id", request_id.encode()))
+                message["headers"].extend(SECURITY_HEADERS)
+                if not scope["path"].startswith(_DOCS_PATHS):
+                    message["headers"].append(API_CSP)
             await send(message)
 
         try:
