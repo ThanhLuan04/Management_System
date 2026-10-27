@@ -24,9 +24,14 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: [
+  webServer: webServers(),
+});
+
+/** Dùng chung với playwright.screenshots.config.ts (backend thêm cờ --demo). */
+export function webServers(backendArgs = "") {
+  return [
     {
-      command: `${PYTHON} -m scripts.e2e_server`,
+      command: `${PYTHON} -m scripts.e2e_server ${backendArgs}`.trim(),
       cwd: "../backend",
       url: `${API_URL}/api/v1/health`,
       reuseExistingServer: false, // luôn bắt đầu từ database sạch
@@ -40,5 +45,5 @@ export default defineConfig({
       timeout: 120_000,
       env: { SMARTSTORE_API_URL: API_URL },
     },
-  ],
-});
+  ];
+}

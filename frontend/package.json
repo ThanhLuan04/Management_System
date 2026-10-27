@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "screenshots": "playwright test --config playwright.screenshots.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",

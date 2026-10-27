@@ -6,9 +6,11 @@ Dùng TEST_DATABASE_URL (database tên kết thúc bằng "_test") — KHÔNG BA
 Không chạy pytest cùng lúc với E2E vì cả hai cùng xóa và dựng lại database này.
 
 Chạy tay (tại thư mục backend):
-    .\\.venv\\Scripts\\python.exe -m scripts.e2e_server
+    .\\.venv\\Scripts\\python.exe -m scripts.e2e_server           # database trống + Admin E2E
+    .\\.venv\\Scripts\\python.exe -m scripts.e2e_server --demo    # thêm dữ liệu demo (chụp ảnh màn hình)
 """
 
+import argparse
 import os
 import sys
 import tempfile
@@ -63,9 +65,17 @@ def _create_admin() -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Backend cho E2E / chụp ảnh màn hình")
+    parser.add_argument("--demo", action="store_true", help="Nạp dữ liệu demo 60 ngày (dùng khi chụp ảnh màn hình)")
+    args = parser.parse_args()
+
     _use_test_database()
     _reset_database()
     _create_admin()
+    if args.demo:
+        from scripts.seed_demo import seed
+
+        seed(days=60, reset=False)
 
     import uvicorn
 
