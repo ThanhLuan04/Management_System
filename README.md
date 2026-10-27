@@ -57,7 +57,8 @@ Thiết kế database, API và cấu trúc dự án: [docs/](docs/README.md).
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2.1, Alembic, Pydantic v2, PostgreSQL 18, Argon2, PyJWT |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query, React Hook Form, Zod, Recharts, Radix UI |
 | Kiểm thử | pytest, Vitest + React Testing Library, Playwright |
-| CI | GitHub Actions: ruff, pytest, pip-audit, typecheck, Vitest, build, npm audit, E2E |
+| CI | GitHub Actions: ruff, pytest, pip-audit, typecheck, Vitest, build, npm audit, E2E, chạy thử Docker |
+| Đóng gói | Docker Compose: PostgreSQL, backend, Caddy (HTTPS tự động, reverse proxy) |
 
 ## Chạy trên máy
 
@@ -99,6 +100,28 @@ Mở http://localhost:5173. Vite chuyển tiếp `/api` sang backend ở cổng 
 
 **Tài khoản demo** (sau khi chạy `seed_demo`): `quanly` (Quản lý), `thungan1`, `thungan2` (Thu ngân),
 mật khẩu `Demo@123`. Tài khoản Admin là tài khoản bạn tạo ở bước 2.
+
+## Chạy bằng Docker
+
+Cần Docker (có Docker Compose v2). Tại thư mục gốc:
+
+```bash
+cp .env.example .env        # điền POSTGRES_PASSWORD, JWT_SECRET_KEY; giữ PUBLIC_URL=http://localhost để chạy thử
+docker compose up -d --build
+docker compose exec backend python -m scripts.create_admin --username admin --full-name "Quản trị viên"
+```
+
+Mở http://localhost. Cụm gồm 3 container: **PostgreSQL 18**, **backend** (tự chạy migration khi khởi động)
+và **Caddy** — phục vụ frontend, chuyển `/api` sang backend, gắn header bảo mật (CSP, HSTS…).
+Chỉ Caddy mở cổng ra ngoài.
+
+- **Có tên miền:** đặt `SITE_ADDRESS=shop.example.com` và `PUBLIC_URL=https://shop.example.com` trong `.env`,
+  trỏ DNS về máy chủ, mở cổng 80/443 — Caddy tự lấy chứng chỉ HTTPS.
+- **Dữ liệu demo:** đặt `ENVIRONMENT=development` rồi `docker compose exec backend python -m scripts.seed_demo`.
+- **Sao lưu:** `./scripts/backup_db.sh` (giữ 14 bản mới nhất trong `backups/`, nên chạy hằng ngày bằng cron);
+  khôi phục: `./scripts/restore_db.sh backups/<file>.dump`.
+
+CI build image và chạy thử cả cụm cho mỗi lần push (kiểm tra trang, API, header, cổng không mở, sao lưu).
 
 ## Kiểm thử
 
@@ -143,4 +166,4 @@ docs/              đặc tả, thiết kế, rà soát bảo mật, ảnh màn 
 **Kỹ thuật:**
 - Ảnh sản phẩm lưu trên đĩa server; giới hạn đăng nhập lưu trong bộ nhớ một tiến trình
   (chạy nhiều instance cần Redis).
-- Chưa đóng gói Docker và chưa deploy; HTTPS, HSTS và CSP cho trang frontend sẽ cấu hình khi deploy.
+- Đã đóng gói Docker nhưng chưa deploy lên máy chủ công khai.

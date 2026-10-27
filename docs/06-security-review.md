@@ -41,11 +41,21 @@ Cột "Bằng chứng" chỉ ghi những gì đã thực sự chạy/kiểm tra;
 
 - Frontend: `npm audit` → 0 lỗ hổng.
 - Backend: **chưa chạy được** `pip-audit` trên máy phát triển (lỗi xác thực chứng chỉ SSL khi gọi pypi.org từ Python).
-  Không tắt kiểm tra SSL để vượt qua; sẽ chạy `pip-audit` trong GitHub Actions (giai đoạn 8).
+  Không tắt kiểm tra SSL để vượt qua; `pip-audit` chạy trong GitHub Actions cho mỗi lần push.
 
-## Việc còn lại cho giai đoạn deploy
+## Đóng gói Docker (bổ sung sau rà soát)
 
-- HSTS và chuyển hướng HTTP → HTTPS đặt ở reverse proxy.
-- CSP cho trang frontend (file tĩnh) đặt ở web server phục vụ frontend.
-- Đổi `JWT_SECRET_KEY`, mật khẩu database; không tạo tài khoản demo trên production.
+Cấu hình trong `docker-compose.yml` và `frontend/Caddyfile`; CI dựng cả cụm và kiểm tra các mục dưới.
+- Caddy: tự lấy chứng chỉ HTTPS và chuyển HTTP → HTTPS khi có tên miền; gắn HSTS, CSP cho trang frontend
+  (`script-src 'self'`; style cho phép inline vì Recharts/sonner gắn style trực tiếp), `X-Frame-Options`,
+  `Permissions-Policy`; giới hạn kích thước request.
+- Chỉ Caddy mở cổng; backend và PostgreSQL chỉ nằm trong mạng nội bộ Docker (CI kiểm tra cổng 8000/5432 đóng).
+- Backend chạy bằng user thường (không phải root), 1 worker, `--proxy-headers` để giới hạn đăng nhập theo IP thật.
+- `ENVIRONMENT=production`: tắt Swagger/OpenAPI (CI kiểm tra 404), script dữ liệu demo từ chối chạy.
+- Bí mật (`POSTGRES_PASSWORD`, `JWT_SECRET_KEY`) lấy từ `.env` không commit; compose báo lỗi nếu thiếu.
+
+## Việc còn lại khi deploy lên máy chủ thật
+
+- Đặt mật khẩu database và `JWT_SECRET_KEY` ngẫu nhiên, mạnh; không tạo tài khoản demo trên production.
+- Cài cron chạy `scripts/backup_db.sh` hằng ngày và thử khôi phục định kỳ; nên chép bản sao lưu ra ngoài máy chủ.
 - Rate limit hiện lưu trong bộ nhớ một tiến trình — nếu chạy nhiều worker/instance cần chuyển sang Redis.

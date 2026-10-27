@@ -58,10 +58,11 @@ smartstore/  (D:\management_system)
 │   │   └── test/                # setup Vitest, MSW handler
 │   ├── e2e/                     # Playwright
 │   ├── index.html  vite.config.ts  tailwind.config.ts  tsconfig.json  package.json
-│   ├── Dockerfile
+│   ├── Dockerfile               # build React → phục vụ bằng Caddy
+│   ├── Caddyfile                # reverse proxy /api, HTTPS, header bảo mật
 │   └── .env.example
 ├── docs/                        # Tài liệu thiết kế (thư mục này)
-├── scripts/                     # backup_db.ps1, restore_db.ps1, ...
+├── scripts/                     # backup_db.sh, restore_db.sh (database trong docker compose)
 ├── docker-compose.yml
 ├── .gitignore
 ├── .env.example

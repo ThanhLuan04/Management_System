@@ -78,6 +78,61 @@ jobs:
       - name: Quét lỗ hổng thư viện
         run: npm audit --audit-level=high
 
+  docker:
+    name: Docker (build + chạy thử cả cụm)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Tạo .env tạm
+        run: |
+          cat > .env <<EOF
+          POSTGRES_PASSWORD=$(openssl rand -hex 16)
+          JWT_SECRET_KEY=$(openssl rand -hex 32)
+          SITE_ADDRESS=:80
+          PUBLIC_URL=http://localhost
+          ENVIRONMENT=production
+          EOF
+      - name: Build và khởi động
+        run: docker compose up -d --build --wait --wait-timeout 180
+      - name: Kiểm tra qua Caddy
+        run: |
+          set -eux
+          # Frontend + header bảo mật
+          curl -fsS -D headers.txt -o index.html http://localhost/
+          grep -q '<div id="root">' index.html
+          grep -qi '^content-security-policy:' headers.txt
+          grep -qi '^strict-transport-security:' headers.txt
+          # Route của React (không phải file thật) vẫn trả index.html
+          curl -fsS http://localhost/products | grep -q '<div id="root">'
+          # API qua reverse proxy, database kết nối được
+          curl -fsS http://localhost/api/v1/health | grep -q '"database":"ok"'
+          # Migration đã chạy: đăng nhập sai trả 401 (bảng users tồn tại), không phải 500
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+            -d '{"username":"khongtontai","password":"SaiMatKhau1"}' http://localhost/api/v1/auth/login)
+          test "$code" = "401"
+          # Production: backend tắt Swagger (gọi thẳng trong container — Caddy không chuyển /docs sang backend)
+          docker compose exec -T backend python -c "
+          import urllib.request, urllib.error
+          for path in ('/docs', '/openapi.json'):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:8000' + path)
+                  raise SystemExit(path + ' vẫn mở trong production')
+              except urllib.error.HTTPError as e:
+                  assert e.code == 404, (path, e.code)
+          "
+          # Backend và database không mở cổng ra ngoài máy
+          if curl -s --max-time 3 -o /dev/null http://localhost:8000/; then echo "cổng 8000 đang mở" && exit 1; fi
+          if timeout 3 bash -c '</dev/tcp/127.0.0.1/5432'; then echo "cổng 5432 đang mở" && exit 1; fi
+      - name: Sao lưu database
+        run: |
+          chmod +x scripts/backup_db.sh
+          ./scripts/backup_db.sh
+          test -s "$(ls -1t backups/*.dump | head -n 1)"
+      - name: Log khi lỗi
+        if: failure()
+        run: docker compose logs --no-color
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
