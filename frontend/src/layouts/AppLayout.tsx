@@ -1,7 +1,7 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, ChevronRight, LogOut, Menu, UserRound, X } from "lucide-react";
 import { useState } from "react";
-import { Link, Outlet, useMatches, useNavigate } from "react-router";
+import { Link, Outlet, useMatches, useNavigate, useNavigation } from "react-router";
 import { toast } from "sonner";
 
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -94,9 +94,16 @@ function UserMenu() {
 /** Bố cục chung: sidebar trái (thu thành drawer trên điện thoại), header có breadcrumb + tài khoản. */
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Trang được tải theo nhu cầu: báo đang tải trong lúc trang cũ vẫn hiển thị
+  const loading = useNavigation().state === "loading";
 
   return (
     <div className="min-h-screen lg:pl-60">
+      {loading && (
+        <div role="progressbar" aria-label="Đang tải trang" className="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-primary/20">
+          <div className="h-full w-1/3 animate-[page-loading_1s_ease-in-out_infinite] bg-primary" />
+        </div>
+      )}
       <aside className="fixed inset-y-0 left-0 hidden w-60 lg:block">
         <Sidebar />
       </aside>

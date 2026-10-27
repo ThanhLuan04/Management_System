@@ -59,6 +59,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Thanh tiến trình khi chuyển trang (AppLayout) */
+@keyframes page-loading {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
 /* ---------- In hóa đơn 80mm: chỉ in vùng .print-root, ẩn toàn bộ giao diện ---------- */
 .print-root {
   display: none;
