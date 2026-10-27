@@ -1,22 +1,5 @@
-import { Construction, SearchX } from "lucide-react";
+import { SearchX } from "lucide-react";
 import { Link } from "react-router";
-
-import { PageHeader } from "@/components/common/States";
-import { Card } from "@/components/ui/Card";
-
-/** Trang tạm cho các module sẽ được xây ở các bước tiếp theo của Giai đoạn 6. */
-export function ComingSoon({ title }: { title: string }) {
-  return (
-    <>
-      <PageHeader title={title} />
-      <Card className="flex flex-col items-center gap-2 px-4 py-16 text-center">
-        <Construction className="h-10 w-10 text-slate-300" aria-hidden />
-        <p className="font-medium">Trang đang được xây dựng</p>
-        <p className="text-sm text-muted">API của chức năng này đã sẵn sàng; giao diện sẽ có ở bước tiếp theo.</p>
-      </Card>
-    </>
-  );
-}
 
 export function NotFound() {
   return (
