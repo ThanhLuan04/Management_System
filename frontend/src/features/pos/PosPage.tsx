@@ -21,6 +21,7 @@ import { formatMoney, formatNumber, toNumber } from "@/utils/format";
 
 import { addToCart, type CartLine, cartTotals, cashSuggestions, type Discount, lineSubtotal, setQuantity } from "./cart";
 import { CustomerSelect } from "./CustomerSelect";
+import { ProductGrid } from "./ProductGrid";
 
 const METHODS: PaymentMethod[] = ["CASH", "BANK_TRANSFER", "CARD"];
 
@@ -189,159 +190,184 @@ export function PosPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      {/* Trái: tìm/quét + lưới sản phẩm. Phải: giỏ hàng + thanh toán (luôn nhìn thấy cả hai) */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_400px]">
         <Card className="min-w-0">
           <CardContent className="space-y-4">
             <div ref={pickerWrapper}>
               <ProductPicker onSelect={addProduct} autoFocus label="Tìm sản phẩm để bán (F2)" />
             </div>
+            <ProductGrid onSelect={addProduct} inCart={Object.fromEntries(cart.map((l) => [l.product.id, l.quantity]))} />
+          </CardContent>
+        </Card>
+
+        {/* Màn hình lớn: khung vừa màn hình kể cả khi chưa cuộn trang (đỉnh khung cách mép trên ~8rem);
+            phần giữa (giỏ + nhập thanh toán) cuộn, đáy ghim */}
+        <Card className="flex h-fit flex-col overflow-hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-9rem)]">
+          <CardHeader
+            className="shrink-0 pb-3"
+            title={`Giỏ hàng${cart.length ? ` (${formatNumber(totals.itemCount)})` : ""}`}
+            actions={
+              cart.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={resetCart}>
+                  Xóa giỏ
+                </Button>
+              )
+            }
+          />
+          <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-2">
             {cart.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted">Quét mã vạch hoặc tìm sản phẩm để thêm vào giỏ.</p>
+              <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
+                Bấm vào sản phẩm hoặc quét mã vạch để thêm vào giỏ.
+              </p>
             ) : (
-              <ul className="divide-y divide-border" aria-label="Giỏ hàng">
+              <ul className="-mx-2 divide-y divide-border" aria-label="Giỏ hàng">
                 {cart.map((line) => {
                   const available = shortages[line.product.id] ?? line.product.quantity;
                   const short = line.quantity > available;
                   return (
-                    <li key={line.product.id} className={cn("flex flex-wrap items-center gap-3 py-3", short && "rounded-md bg-destructive-soft px-2")}>
-                      <ProductThumb url={line.product.image_url} name={line.product.name} />
-                      <div className="min-w-40 flex-1">
-                        <p className="font-medium">{line.product.name}</p>
-                        <p className="tabular text-xs text-muted">
-                          {formatMoney(line.product.sale_price)} · còn {formatNumber(available)} {line.product.unit}
-                        </p>
-                        {short && <p className="text-xs font-medium text-destructive">Chỉ còn {formatNumber(available)} trong kho</p>}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button variant="outline" size="icon" aria-label={`Giảm ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, line.quantity - 1))}>
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <Input
-                          aria-label={`Số lượng ${line.product.name}`}
-                          inputMode="numeric"
-                          value={line.quantity}
-                          onChange={(e) => {
-                            const n = Number(e.target.value.replace(/\D/g, ""));
-                            if (n > 0) setCart((c) => setQuantity(c, line.product.id, n));
-                          }}
-                          className="w-16 text-center tabular"
-                        />
-                        <Button variant="outline" size="icon" aria-label={`Tăng ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, line.quantity + 1))}>
-                          <Plus className="h-4 w-4" />
+                    <li key={line.product.id} className={cn("px-2 py-2.5", short && "rounded-md bg-destructive-soft")}>
+                      <div className="flex items-start gap-2.5">
+                        <ProductThumb url={line.product.image_url} name={line.product.name} className="h-9 w-9 text-xs" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium" title={line.product.name}>
+                            {line.product.name}
+                          </p>
+                          <p className="tabular text-xs text-muted">
+                            {formatMoney(line.product.sale_price)} · còn {formatNumber(available)} {line.product.unit}
+                          </p>
+                          {short && <p className="text-xs font-medium text-destructive">Chỉ còn {formatNumber(available)} trong kho</p>}
+                        </div>
+                        <Button variant="ghost" size="icon" className="-mt-1 h-8 w-8" aria-label={`Xóa ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, 0))}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <span className="tabular w-28 text-right font-medium">{formatMoney(lineSubtotal(line))}</span>
-                      <Button variant="ghost" size="icon" aria-label={`Xóa ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, 0))}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="mt-1.5 flex items-center justify-between pl-[46px]">
+                        <div className="flex items-center gap-1">
+                          <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Giảm ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, line.quantity - 1))}>
+                            <Minus className="h-3.5 w-3.5" />
+                          </Button>
+                          <Input
+                            aria-label={`Số lượng ${line.product.name}`}
+                            inputMode="numeric"
+                            value={line.quantity}
+                            onChange={(e) => {
+                              const n = Number(e.target.value.replace(/\D/g, ""));
+                              if (n > 0) setCart((c) => setQuantity(c, line.product.id, n));
+                            }}
+                            className="h-8 w-14 text-center tabular"
+                          />
+                          <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Tăng ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, line.quantity + 1))}>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <span className="tabular font-semibold">{formatMoney(lineSubtotal(line))}</span>
+                      </div>
                     </li>
                   );
                 })}
               </ul>
             )}
-          </CardContent>
-        </Card>
 
-        <Card className="h-fit lg:sticky lg:top-20">
-          <CardHeader title="Thanh toán" />
-          <CardContent className="space-y-4">
-            <CustomerSelect value={customer} onChange={setCustomer} />
+            <div className="border-t border-border pt-4">
+              <h2 className="mb-3 text-base font-semibold">Thanh toán</h2>
+              <div className="space-y-4">
+                <CustomerSelect value={customer} onChange={setCustomer} />
 
-            <dl className="space-y-1.5 text-sm">
-              <div className="flex justify-between"><dt className="text-muted">Tạm tính ({formatNumber(totals.itemCount)} sp)</dt><dd className="tabular">{formatMoney(totals.subtotal)}</dd></div>
-            </dl>
+                <dl className="space-y-1.5 text-sm">
+                  <div className="flex justify-between"><dt className="text-muted">Tạm tính ({formatNumber(totals.itemCount)} sp)</dt><dd className="tabular">{formatMoney(totals.subtotal)}</dd></div>
+                </dl>
 
-            <FormField label="Giảm giá" htmlFor="discount" error={errors.discount} hint={maxPercent === null ? "Không giới hạn" : `Tối đa ${maxPercent}% giá trị đơn`}>
-              <div className="flex gap-2">
-                {discount.type === "PERCENT" ? (
-                  <Input
-                    id="discount"
-                    inputMode="decimal"
-                    className="text-right tabular"
-                    value={discount.value}
-                    invalid={!!errors.discount}
-                    onChange={(e) => setDiscount({ type: "PERCENT", value: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })}
-                    placeholder="0"
-                  />
-                ) : (
-                  <MoneyInput id="discount" invalid={!!errors.discount} value={discount.value} onChange={(v) => setDiscount({ type: "AMOUNT", value: v })} />
-                )}
-                <div role="radiogroup" aria-label="Kiểu giảm giá" className="inline-flex shrink-0 rounded-md border border-border p-0.5">
-                  {(["PERCENT", "AMOUNT"] as const).map((t) => (
+                <FormField label="Giảm giá" htmlFor="discount" error={errors.discount} hint={maxPercent === null ? "Không giới hạn" : `Tối đa ${maxPercent}% giá trị đơn`}>
+                  <div className="flex gap-2">
+                    {discount.type === "PERCENT" ? (
+                      <Input
+                        id="discount"
+                        inputMode="decimal"
+                        className="text-right tabular"
+                        value={discount.value}
+                        invalid={!!errors.discount}
+                        onChange={(e) => setDiscount({ type: "PERCENT", value: e.target.value.replace(/[^\d.]/g, "").slice(0, 5) })}
+                        placeholder="0"
+                      />
+                    ) : (
+                      <MoneyInput id="discount" invalid={!!errors.discount} value={discount.value} onChange={(v) => setDiscount({ type: "AMOUNT", value: v })} />
+                    )}
+                    <div role="radiogroup" aria-label="Kiểu giảm giá" className="inline-flex shrink-0 rounded-md border border-border p-0.5">
+                      {(["PERCENT", "AMOUNT"] as const).map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          role="radio"
+                          aria-checked={discount.type === t}
+                          onClick={() => setDiscount({ type: t, value: "" })}
+                          className={cn("rounded px-3 text-sm", discount.type === t ? "bg-primary text-primary-foreground" : "text-muted")}
+                        >
+                          {t === "PERCENT" ? "%" : "₫"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </FormField>
+
+                <div role="radiogroup" aria-label="Phương thức thanh toán" className="grid grid-cols-3 gap-2">
+                  {METHODS.map((m) => (
                     <button
-                      key={t}
+                      key={m}
                       type="button"
                       role="radio"
-                      aria-checked={discount.type === t}
-                      onClick={() => setDiscount({ type: t, value: "" })}
-                      className={cn("rounded px-3 text-sm", discount.type === t ? "bg-primary text-primary-foreground" : "text-muted")}
+                      aria-checked={method === m}
+                      onClick={() => setMethod(m)}
+                      className={cn("rounded-md border px-2 py-2 text-sm", method === m ? "border-primary bg-primary/10 font-medium text-primary" : "border-border")}
                     >
-                      {t === "PERCENT" ? "%" : "₫"}
+                      {PAYMENT_METHOD_LABELS[m]}
                     </button>
                   ))}
                 </div>
-              </div>
-            </FormField>
 
-            <div className="flex items-baseline justify-between border-t border-border pt-3">
+                {method === "CASH" ? (
+                  <>
+                    <FormField label="Khách đưa" htmlFor="cash" error={errors.cash}>
+                      <MoneyInput id="cash" value={cash} onChange={setCash} invalid={!!errors.cash} />
+                    </FormField>
+                    <div className="flex flex-wrap gap-2">
+                      {cashSuggestions(totals.total).map((v) => (
+                        <Button key={v} variant="secondary" size="sm" onClick={() => setCash(String(v))}>
+                          {formatNumber(v)}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted">Tiền thừa</span>
+                      <span className={cn("tabular font-semibold", change !== null && change < 0 && "text-destructive")}>
+                        {change === null ? "—" : formatMoney(change)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <FormField label="Mã giao dịch (tùy chọn)" htmlFor="reference" hint="Hệ thống chỉ ghi nhận, không kết nối ngân hàng">
+                    <Input id="reference" value={referenceNote} maxLength={100} onChange={(e) => setReferenceNote(e.target.value)} />
+                  </FormField>
+                )}
+
+                <FormField label="Ghi chú đơn" htmlFor="order-note">
+                  <Input id="order-note" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+                </FormField>
+              </div>
+            </div>
+          </CardContent>
+
+          {/* Ghim ở đáy khung: giỏ dài đến đâu vẫn thấy tổng tiền và nút Thanh toán */}
+          <div className="shrink-0 space-y-3 border-t border-border bg-card px-5 py-4">
+            <div className="flex items-baseline justify-between">
               <span className="font-semibold">Khách cần trả</span>
               <span className="tabular text-2xl font-bold">{formatMoney(totals.total)}</span>
             </div>
             {totals.discount > 0 && <p className="-mt-3 text-right text-xs text-muted">đã giảm {formatMoney(totals.discount)}</p>}
-
-            <div role="radiogroup" aria-label="Phương thức thanh toán" className="grid grid-cols-3 gap-2">
-              {METHODS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  role="radio"
-                  aria-checked={method === m}
-                  onClick={() => setMethod(m)}
-                  className={cn("rounded-md border px-2 py-2 text-sm", method === m ? "border-primary bg-primary/10 font-medium text-primary" : "border-border")}
-                >
-                  {PAYMENT_METHOD_LABELS[m]}
-                </button>
-              ))}
-            </div>
-
-            {method === "CASH" ? (
-              <>
-                <FormField label="Khách đưa" htmlFor="cash" error={errors.cash}>
-                  <MoneyInput id="cash" value={cash} onChange={setCash} invalid={!!errors.cash} />
-                </FormField>
-                <div className="flex flex-wrap gap-2">
-                  {cashSuggestions(totals.total).map((v) => (
-                    <Button key={v} variant="secondary" size="sm" onClick={() => setCash(String(v))}>
-                      {formatNumber(v)}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">Tiền thừa</span>
-                  <span className={cn("tabular font-semibold", change !== null && change < 0 && "text-destructive")}>
-                    {change === null ? "—" : formatMoney(change)}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <FormField label="Mã giao dịch (tùy chọn)" htmlFor="reference" hint="Hệ thống chỉ ghi nhận, không kết nối ngân hàng">
-                <Input id="reference" value={referenceNote} maxLength={100} onChange={(e) => setReferenceNote(e.target.value)} />
-              </FormField>
-            )}
-
-            <FormField label="Ghi chú đơn" htmlFor="order-note">
-              <Input id="order-note" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
-            </FormField>
-
             <Button size="lg" className="w-full" loading={createOrder.isPending} disabled={cart.length === 0} onClick={checkout}>
               Thanh toán (F9)
             </Button>
-            {cart.length > 0 && (
-              <Button variant="ghost" size="sm" className="w-full" onClick={resetCart}>
-                Xóa giỏ hàng
-              </Button>
-            )}
-          </CardContent>
+          </div>
         </Card>
       </div>
 

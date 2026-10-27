@@ -28,6 +28,8 @@ const MILK = {
   updated_at: "",
 };
 
+const WATER = { ...MILK, id: 8, sku: "NUOC-500", barcode: null, name: "Nước suối 500ml", unit: "chai", sale_price: "5000.00", quantity: 0 };
+
 const ORDER = {
   id: 501,
   code: "HD20261027-0001",
@@ -58,7 +60,8 @@ vi.mock("@/services/http", () => ({
       if (url === "/settings") {
         return { data: { store_name: "SmartStore", store_address: "", store_phone: "", return_window_days: 7, my_max_discount_percent: "10" } };
       }
-      if (url === "/products") return { data: { items: [MILK], page: 1, page_size: 8, total: 1 } };
+      if (url === "/products") return { data: { items: [MILK, WATER], page: 1, page_size: 8, total: 2 } };
+      if (url === "/categories") return { data: [{ id: 1, name: "Sữa", parent_id: null, is_active: true, children: [] }] };
       throw new Error(`unexpected GET ${url}`);
     }),
     post: vi.fn(),
@@ -84,6 +87,35 @@ async function scanMilkTwiceAndPayCash() {
 
 const orderCalls = () => vi.mocked(http.post).mock.calls.filter(([url]) => url === "/orders");
 const keyOf = (call: unknown[]) => (call[2] as { headers: Record<string, string> }).headers["Idempotency-Key"];
+
+describe("PosPage — lưới sản phẩm", () => {
+  it("shows products without searching and adds one to the cart on click", async () => {
+    renderPos();
+
+    const tile = await screen.findByRole("button", { name: /^Thêm Sữa tươi 1L/ });
+    await userEvent.click(tile);
+    await userEvent.click(tile);
+
+    expect(screen.getByLabelText("Số lượng Sữa tươi 1L")).toHaveValue("2");
+    expect(tile).toHaveTextContent("2"); // số lượng đang có trong giỏ hiện trên ô
+  });
+
+  it("disables out-of-stock products", async () => {
+    renderPos();
+
+    expect(await screen.findByRole("button", { name: /^Thêm Nước suối 500ml.*hết hàng/ })).toBeDisabled();
+  });
+
+  it("filters the grid by category", async () => {
+    renderPos();
+
+    await userEvent.click(await screen.findByRole("radio", { name: "Sữa" }));
+
+    await vi.waitFor(() =>
+      expect(vi.mocked(http.get)).toHaveBeenCalledWith("/products", { params: expect.objectContaining({ category_id: 1 }) }),
+    );
+  });
+});
 
 describe("PosPage", () => {
   it("sends only ids and quantities, and reuses the idempotency key when retrying after a network error", async () => {
