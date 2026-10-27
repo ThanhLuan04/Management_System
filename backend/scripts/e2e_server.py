@@ -66,7 +66,9 @@ def _create_admin() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Backend cho E2E / chụp ảnh màn hình")
-    parser.add_argument("--demo", action="store_true", help="Nạp dữ liệu demo 60 ngày (dùng khi chụp ảnh màn hình)")
+    parser.add_argument(
+        "--demo", action="store_true", help="Nạp dữ liệu demo 60 ngày (dùng khi chụp ảnh màn hình)"
+    )
     args = parser.parse_args()
 
     _use_test_database()

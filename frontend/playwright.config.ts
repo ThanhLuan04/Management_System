@@ -36,7 +36,7 @@ export function webServers(backendArgs = "") {
       url: `${API_URL}/api/v1/health`,
       reuseExistingServer: false, // luôn bắt đầu từ database sạch
       timeout: 120_000,
-      stdout: "pipe",
+      stdout: "pipe" as const,
     },
     {
       command: "npx vite --port 5174 --strictPort",
