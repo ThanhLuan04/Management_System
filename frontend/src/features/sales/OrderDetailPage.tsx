@@ -130,7 +130,7 @@ export function OrderDetailPage() {
                       )}
                       {p.reference_note && <span className="block text-xs text-muted">Mã GD: {p.reference_note}</span>}
                     </span>
-                    <span className={p.type === "REFUND" ? "tabular text-red-700" : "tabular"}>
+                    <span className={p.type === "REFUND" ? "tabular text-destructive-strong" : "tabular"}>
                       {p.type === "REFUND" ? "−" : ""}
                       {formatMoney(p.amount)}
                     </span>
@@ -191,7 +191,7 @@ export function OrderDetailPage() {
                         {r.code}
                       </Link>
                       <span className="tabular text-muted">{formatDateTime(r.created_at)}</span>
-                      <span className="tabular text-red-700">−{formatMoney(r.total_refund)}</span>
+                      <span className="tabular text-destructive-strong">−{formatMoney(r.total_refund)}</span>
                     </li>
                   ))}
                 </ul>

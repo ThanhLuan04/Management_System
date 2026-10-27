@@ -89,7 +89,7 @@ export function RevenueChart({ rows, groupBy }: { rows: RevenueRow[]; groupBy: G
       {showTable ? (
         <div className="max-h-80 overflow-auto rounded-md border border-border">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-left text-muted">
+            <thead className="sticky top-0 bg-surface-hover text-left text-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">Kỳ</th>
                 <th className="px-3 py-2 text-right font-medium">Số đơn</th>

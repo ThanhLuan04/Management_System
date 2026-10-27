@@ -30,7 +30,7 @@ export function RequirePermission({ permission, children }: { permission: Permis
   if (!can(permission)) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
-        <ShieldX className="h-12 w-12 text-slate-300" aria-hidden />
+        <ShieldX className="h-12 w-12 text-subtle" aria-hidden />
         <h1 className="text-lg font-semibold">Bạn không có quyền truy cập trang này</h1>
         <p className="text-sm text-muted">Liên hệ quản trị viên nếu bạn cần quyền này.</p>
       </div>

@@ -5,11 +5,11 @@ import { cn } from "@/utils/cn";
 import { Spinner } from "./Spinner";
 
 const variants = {
-  default: "bg-primary text-primary-foreground hover:bg-primary-hover",
-  secondary: "bg-slate-100 text-foreground hover:bg-slate-200",
-  outline: "border border-border bg-card text-foreground hover:bg-slate-50",
-  ghost: "text-foreground hover:bg-slate-100",
-  destructive: "bg-destructive text-white hover:bg-red-700",
+  default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover",
+  secondary: "bg-surface-muted text-foreground hover:bg-surface-strong",
+  outline: "border border-border bg-card text-foreground shadow-xs hover:bg-surface-hover",
+  ghost: "text-foreground hover:bg-surface-muted",
+  destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive-hover",
 } as const;
 
 const sizes = {

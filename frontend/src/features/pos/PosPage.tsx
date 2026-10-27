@@ -203,7 +203,7 @@ export function PosPage() {
                   const available = shortages[line.product.id] ?? line.product.quantity;
                   const short = line.quantity > available;
                   return (
-                    <li key={line.product.id} className={cn("flex flex-wrap items-center gap-3 py-3", short && "rounded-md bg-red-50 px-2")}>
+                    <li key={line.product.id} className={cn("flex flex-wrap items-center gap-3 py-3", short && "rounded-md bg-destructive-soft px-2")}>
                       <ProductThumb url={line.product.image_url} name={line.product.name} />
                       <div className="min-w-40 flex-1">
                         <p className="font-medium">{line.product.name}</p>

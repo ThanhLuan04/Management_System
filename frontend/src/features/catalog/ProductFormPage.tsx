@@ -111,7 +111,7 @@ function ImageUploader({ product }: { product: Product }) {
 
   return (
     <div className="flex items-center gap-4">
-      <ProductThumb url={product.image_url} name={product.name} className="h-24 w-24" />
+      <ProductThumb url={product.image_url} name={product.name} className="h-24 w-24 rounded-xl text-3xl" />
       <div className="space-y-1">
         <input
           ref={inputRef}

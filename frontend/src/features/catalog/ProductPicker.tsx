@@ -128,9 +128,9 @@ export function ProductPicker({ onSelect, placeholder, activeOnly = true, autoFo
               onMouseDown={(e) => e.preventDefault()} // giữ focus ở ô nhập
               onMouseEnter={() => setHighlight(index)}
               onClick={() => choose(product)}
-              className={cn("flex cursor-pointer items-center gap-3 px-3 py-2 text-sm", index === highlight && "bg-slate-100")}
+              className={cn("flex cursor-pointer items-center gap-3 px-3 py-2 text-sm", index === highlight && "bg-surface-muted")}
             >
-              <ProductThumb url={product.image_url} name={product.name} className="h-8 w-8" />
+              <ProductThumb url={product.image_url} name={product.name} className="h-8 w-8 text-xs" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{product.name}</span>
                 <span className="tabular text-xs text-muted">

@@ -85,7 +85,7 @@ function Changes({ log }: { log: AuditLog }) {
       {keys.map((key) => (
         <li key={key} className="break-all">
           <span className="text-muted">{key}:</span>{" "}
-          {log.old_values && key in log.old_values && <><span className="line-through decoration-red-400">{formatValue(log.old_values[key])}</span> → </>}
+          {log.old_values && key in log.old_values && <><span className="line-through decoration-destructive">{formatValue(log.old_values[key])}</span> → </>}
           <span className="font-medium">{formatValue(log.new_values?.[key])}</span>
         </li>
       ))}

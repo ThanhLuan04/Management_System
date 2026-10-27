@@ -1,8 +1,9 @@
-import { Download } from "lucide-react";
+import { AlertTriangle, Boxes, Coins, Download, Package, Receipt, ShoppingBag, TrendingUp, Undo2, Wallet, Warehouse } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
+import { StatCard } from "@/components/common/StatCard";
 import { ErrorState, EmptyState, PageHeader } from "@/components/common/States";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -34,16 +35,6 @@ const GROUPS: { id: GroupBy; label: string }[] = [
   { id: "month", label: "Tháng" },
 ];
 
-function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "negative" }) {
-  return (
-    <Card className="p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className={cn("mt-1 text-xl font-bold", tone === "negative" && "text-red-700")}>{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
-    </Card>
-  );
-}
-
 function Loading() {
   return <Skeleton className="h-80" />;
 }
@@ -60,17 +51,20 @@ function RevenueTab({ params }: { params: { date_from: string; date_to: string; 
   return (
     <div className={cn("space-y-6 transition-opacity", isFetching && "opacity-60")}>
       <section aria-label="Tổng kỳ" className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <Stat label="Doanh thu gộp" value={formatMoney(t.gross_revenue)} hint={`${formatNumber(t.order_count)} đơn`} />
-        <Stat label="Tiền hoàn trả" value={formatMoney(t.refunds)} />
-        <Stat label="Doanh thu thuần" value={formatMoney(t.net_revenue)} />
-        <Stat label="Giá vốn hàng bán" value={formatMoney(t.cogs)} />
-        <Stat
+        <StatCard compact label="Doanh thu gộp" icon={Wallet} value={formatMoney(t.gross_revenue)} hint={`${formatNumber(t.order_count)} đơn`} />
+        <StatCard compact label="Tiền hoàn trả" icon={Undo2} tone="destructive" value={formatMoney(t.refunds)} />
+        <StatCard compact label="Doanh thu thuần" icon={Receipt} tone="info" value={formatMoney(t.net_revenue)} />
+        <StatCard compact label="Giá vốn hàng bán" icon={Coins} tone="warning" value={formatMoney(t.cogs)} />
+        <StatCard
+          compact
           label="Lợi nhuận gộp"
+          icon={TrendingUp}
+          tone="success"
           value={formatMoney(t.gross_profit)}
-          tone={toNumber(t.gross_profit) < 0 ? "negative" : undefined}
+          valueTone={toNumber(t.gross_profit) < 0 ? "negative" : undefined}
           hint={margin === null ? undefined : `Biên ${margin.toFixed(1).replace(".", ",")}%`}
         />
-        <Stat label="Giá trị đơn trung bình" value={formatMoney(t.average_order_value)} />
+        <StatCard compact label="Giá trị đơn trung bình" icon={ShoppingBag} value={formatMoney(t.average_order_value)} />
       </section>
       <Card>
         <CardHeader title="Biểu đồ theo kỳ" description="Doanh thu theo ngày bán; tiền hoàn tính vào ngày trả hàng" />
@@ -102,7 +96,7 @@ function RevenueTab({ params }: { params: { date_from: string; date_to: string; 
                   <td className="px-3 py-2 text-right">{formatMoney(r.refunds)}</td>
                   <td className="px-3 py-2 text-right">{formatMoney(r.net_revenue)}</td>
                   <td className="px-3 py-2 text-right">{formatMoney(r.cogs)}</td>
-                  <td className={cn("px-5 py-2 text-right font-medium", toNumber(r.gross_profit) < 0 && "text-red-700")}>{formatMoney(r.gross_profit)}</td>
+                  <td className={cn("px-5 py-2 text-right font-medium", toNumber(r.gross_profit) < 0 && "text-destructive-strong")}>{formatMoney(r.gross_profit)}</td>
                 </tr>
               ))}
             </tbody>
@@ -181,7 +175,7 @@ function TopProductsTab({ range }: { range: { date_from: string; date_to: string
                   <td className="tabular px-3 py-2 text-right">{formatNumber(r.quantity)}</td>
                   <td className="tabular px-3 py-2 text-right">{formatMoney(r.revenue)}</td>
                   <td className="px-5 py-2" aria-hidden>
-                    <div className="h-1.5 rounded-full bg-slate-100">
+                    <div className="h-1.5 rounded-full bg-surface-muted">
                       <div
                         className="h-1.5 rounded-full bg-series-1"
                         style={{ width: `${Math.max(2, ((by === "quantity" ? r.quantity : toNumber(r.revenue)) / max) * 100)}%` }}
@@ -207,10 +201,17 @@ function InventoryTab({ lowStock, includeInactive }: { lowStock: boolean; includ
   return (
     <div className={cn("space-y-6 transition-opacity", isFetching && "opacity-60")}>
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4" aria-label="Tổng quan tồn kho">
-        <Stat label="Số sản phẩm" value={formatNumber(data.product_count)} />
-        <Stat label="Tổng số lượng tồn" value={formatNumber(data.total_quantity)} />
-        <Stat label="Giá trị tồn kho" value={formatMoney(data.total_value)} hint="Tồn × giá vốn bình quân" />
-        <Stat label="Sắp hết hàng" value={formatNumber(data.low_stock_count)} />
+        <StatCard compact label="Số sản phẩm" icon={Package} value={formatNumber(data.product_count)} />
+        <StatCard compact label="Tổng số lượng tồn" icon={Boxes} tone="info" value={formatNumber(data.total_quantity)} />
+        <StatCard compact label="Giá trị tồn kho" icon={Warehouse} tone="success" value={formatMoney(data.total_value)} hint="Tồn × giá vốn bình quân" />
+        <StatCard
+          compact
+          label="Sắp hết hàng"
+          icon={AlertTriangle}
+          tone="warning"
+          value={formatNumber(data.low_stock_count)}
+          valueTone={data.low_stock_count > 0 ? "warning" : undefined}
+        />
       </section>
       <Card>
         <CardContent className="overflow-x-auto px-0">
@@ -396,7 +397,7 @@ export function ReportsPage() {
                   onClick={() => update(presetRange(p.id))}
                   className={cn(
                     "rounded-md px-3 py-1.5 text-sm",
-                    activePreset === p.id ? "bg-primary text-primary-foreground" : "text-muted hover:bg-slate-100 hover:text-foreground",
+                    activePreset === p.id ? "bg-primary text-primary-foreground" : "text-muted hover:bg-surface-muted hover:text-foreground",
                   )}
                 >
                   {p.label}

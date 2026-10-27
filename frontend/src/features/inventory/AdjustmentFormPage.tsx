@@ -28,7 +28,7 @@ function DiffCell({ change, after, isStocktake }: { change: number | null; after
   if (!isStocktake) return <>{formatNumber(after ?? 0)}</>;
   if (change === 0) return <span className="text-muted">Khớp</span>;
   return (
-    <span className={change > 0 ? "text-green-700" : "text-red-700"}>
+    <span className={change > 0 ? "text-success-strong" : "text-destructive-strong"}>
       {change > 0 ? "+" : "−"}
       {formatNumber(Math.abs(change))}
     </span>

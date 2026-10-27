@@ -155,7 +155,7 @@ function HistoryTab() {
       header: "Thay đổi",
       align: "right",
       cell: (t) => (
-        <span className={cn("tabular font-medium", t.quantity_change > 0 ? "text-green-700" : "text-red-700")}>
+        <span className={cn("tabular font-medium", t.quantity_change > 0 ? "text-success-strong" : "text-destructive-strong")}>
           {t.quantity_change > 0 ? "+" : "−"}
           {formatNumber(Math.abs(t.quantity_change))}
         </span>

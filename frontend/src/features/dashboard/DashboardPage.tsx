@@ -1,7 +1,7 @@
-import { AlertTriangle, PackageX } from "lucide-react";
-import type { ReactNode } from "react";
+import { AlertTriangle, PackageX, Receipt, TrendingUp, Wallet, Warehouse } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 
+import { StatCard } from "@/components/common/StatCard";
 import { EmptyState, ErrorState, PageHeader } from "@/components/common/States";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -65,16 +65,6 @@ function Segmented<T extends string>({
   );
 }
 
-function StatCard({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "warning" }) {
-  return (
-    <Card className="p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className={cn("mt-1 text-2xl font-bold", tone === "warning" && "text-amber-700")}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
-    </Card>
-  );
-}
-
 export function DashboardPage() {
   // Bộ lọc nằm trên URL → tải lại trang / chia sẻ link giữ nguyên khoảng thời gian
   const [searchParams, setSearchParams] = useSearchParams();
@@ -120,28 +110,38 @@ export function DashboardPage() {
               <>
                 <StatCard
                   label="Doanh thu hôm nay"
+                  icon={Wallet}
                   value={formatMoney(kpis.today_net_revenue)}
                   hint={`${formatNumber(kpis.today_order_count)} đơn`}
                 />
                 <StatCard
                   label="Doanh thu thuần (kỳ)"
+                  icon={Receipt}
+                  tone="info"
                   value={formatMoney(kpis.net_revenue)}
                   hint={`${formatNumber(kpis.order_count)} đơn · hoàn trả ${formatMoney(kpis.refunds)}`}
                 />
                 <StatCard
                   label="Lợi nhuận gộp ước tính"
+                  icon={TrendingUp}
+                  tone="success"
                   value={formatMoney(kpis.gross_profit)}
+                  valueTone={toNumber(kpis.gross_profit) < 0 ? "negative" : undefined}
                   hint={margin === null ? "—" : `Biên lợi nhuận ${margin.toFixed(1).replace(".", ",")}%`}
                 />
                 <StatCard
                   label="Giá trị tồn kho"
+                  icon={Warehouse}
+                  tone="info"
                   value={formatMoney(kpis.inventory_value)}
                   hint={`${formatNumber(kpis.active_product_count)} sản phẩm đang bán`}
                 />
                 <StatCard
                   label="Sắp hết hàng"
+                  icon={AlertTriangle}
+                  tone="warning"
                   value={formatNumber(kpis.low_stock_count)}
-                  tone={kpis.low_stock_count > 0 ? "warning" : undefined}
+                  valueTone={kpis.low_stock_count > 0 ? "warning" : undefined}
                   hint={<Link to="/inventory?low_stock=true" className="text-primary hover:underline">Xem tồn kho</Link>}
                 />
               </>
@@ -177,7 +177,7 @@ export function DashboardPage() {
                             <span className="tabular shrink-0 font-medium">{formatMoney(p.revenue)}</span>
                           </div>
                           <div className="mt-1 flex items-center gap-2">
-                            <div className="h-1.5 flex-1 rounded-full bg-slate-100">
+                            <div className="h-1.5 flex-1 rounded-full bg-surface-muted">
                               <div
                                 className="h-1.5 rounded-full bg-series-1"
                                 style={{ width: `${Math.max(2, (toNumber(p.revenue) / max) * 100)}%` }}
@@ -219,7 +219,7 @@ export function DashboardPage() {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {data!.recent_orders.map((order) => (
-                          <tr key={order.id} className="hover:bg-slate-50">
+                          <tr key={order.id} className="hover:bg-surface-hover">
                             <td className="px-5 py-2.5 font-medium">
                               <Link to={`/orders/${order.id}`} className="text-primary hover:underline">
                                 {order.code}

@@ -18,7 +18,7 @@ async function expectStock(page: Page, quantity: number) {
 }
 
 function stat(page: Page, label: string) {
-  return page.getByRole("region", { name: "Tổng kỳ" }).getByText(label, { exact: true }).locator("..");
+  return page.getByRole("region", { name: "Tổng kỳ" }).getByRole("group", { name: label, exact: true });
 }
 
 test("nhập hàng → bán → trả hàng → báo cáo", async ({ browser }) => {

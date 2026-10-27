@@ -55,7 +55,7 @@ export function AdjustmentDetailPage() {
                     </td>
                     <td className="px-3 py-2.5 text-right">{formatNumber(i.quantity_before)}</td>
                     {isStocktake && <td className="px-3 py-2.5 text-right">{formatNumber(i.counted_quantity ?? 0)}</td>}
-                    <td className={cn("px-3 py-2.5 text-right font-medium", i.quantity_change > 0 ? "text-green-700" : "text-red-700")}>
+                    <td className={cn("px-3 py-2.5 text-right font-medium", i.quantity_change > 0 ? "text-success-strong" : "text-destructive-strong")}>
                       {i.quantity_change > 0 ? "+" : "−"}
                       {formatNumber(Math.abs(i.quantity_change))}
                     </td>

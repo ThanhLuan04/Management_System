@@ -7,5 +7,5 @@ export function Spinner({ className, label = "Đang tải" }: { className?: stri
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden className={cn("animate-pulse rounded-md bg-slate-200/70", className)} />;
+  return <div aria-hidden className={cn("animate-pulse rounded-md bg-skeleton", className)} />;
 }

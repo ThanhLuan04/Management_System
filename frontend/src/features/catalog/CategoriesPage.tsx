@@ -255,9 +255,9 @@ export function CategoriesPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-50">
-                      <td className={cn("px-5 py-2.5", row.depth === 0 ? "font-medium" : "pl-10 text-slate-700")}>
-                        {row.depth === 1 && <span className="mr-1 text-slate-300" aria-hidden>└</span>}
+                    <tr key={row.id} className="hover:bg-surface-hover">
+                      <td className={cn("px-5 py-2.5", row.depth === 0 ? "font-medium" : "pl-10 text-foreground")}>
+                        {row.depth === 1 && <span className="mr-1 text-subtle" aria-hidden>└</span>}
                         {row.name}
                       </td>
                       <td className="tabular px-3 py-2.5 text-right">

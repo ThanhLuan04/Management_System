@@ -26,7 +26,7 @@ export function CustomerSelect({ value, onChange }: { value: Customer | null; on
 
   if (value) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-slate-50 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-hover px-3 py-2 text-sm">
         <span className="min-w-0">
           <span className="block truncate font-medium">{value.name}</span>
           <span className="tabular text-xs text-muted">
@@ -81,7 +81,7 @@ export function CustomerSelect({ value, onChange }: { value: Customer | null; on
                 setText("");
                 setOpen(false);
               }}
-              className="cursor-pointer px-3 py-2 hover:bg-slate-100"
+              className="cursor-pointer px-3 py-2 hover:bg-surface-muted"
             >
               <span className="font-medium">{c.name}</span>
               <span className="tabular ml-2 text-xs text-muted">{c.phone ?? c.code}</span>

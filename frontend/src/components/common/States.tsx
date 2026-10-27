@@ -8,7 +8,7 @@ import { ApiError } from "@/services/apiError";
 export function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
-      <Inbox className="h-10 w-10 text-slate-300" aria-hidden />
+      <Inbox className="h-10 w-10 text-subtle" aria-hidden />
       <p className="font-medium">{title}</p>
       {description && <p className="max-w-sm text-sm text-muted">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
@@ -24,7 +24,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       <AlertTriangle className="h-10 w-10 text-destructive" aria-hidden />
       <p className="font-medium">Không tải được dữ liệu</p>
       <p className="max-w-md text-sm text-muted">{apiError?.message ?? "Đã xảy ra lỗi không xác định."}</p>
-      {apiError?.requestId && <p className="text-xs text-slate-400">Mã yêu cầu: {apiError.requestId}</p>}
+      {apiError?.requestId && <p className="text-xs text-subtle">Mã yêu cầu: {apiError.requestId}</p>}
       {onRetry && (
         <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
           <RotateCw className="h-4 w-4" /> Thử lại
@@ -38,7 +38,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

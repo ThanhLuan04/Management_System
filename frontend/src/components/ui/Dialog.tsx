@@ -19,7 +19,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-slate-900/50" />
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-overlay" />
         <RadixDialog.Content
           className={cn(
             "fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2",
@@ -29,7 +29,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
         >
           <div className="flex items-start justify-between gap-4">
             <RadixDialog.Title className="text-lg font-semibold">{title}</RadixDialog.Title>
-            <RadixDialog.Close className="rounded-md p-1 text-muted hover:bg-slate-100" aria-label="Đóng">
+            <RadixDialog.Close className="rounded-md p-1 text-muted hover:bg-surface-muted" aria-label="Đóng">
               <X className="h-4 w-4" />
             </RadixDialog.Close>
           </div>

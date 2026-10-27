@@ -65,7 +65,7 @@ export function DataTable<T>({
     <div className={cn("overflow-x-auto transition-opacity", isFetching && !isPending && "opacity-60")} aria-busy={isFetching}>
       <table className="w-full text-sm">
         <caption className="sr-only">{caption}</caption>
-        <thead className="border-b border-border bg-slate-50/60 text-muted">
+        <thead className="border-b border-border bg-surface-hover text-xs font-semibold text-muted">
           <tr>
             {columns.map((column) => {
               const sortable = column.sortKey && onSort;
@@ -106,7 +106,7 @@ export function DataTable<T>({
                 </tr>
               ))
             : rows?.map((row) => (
-                <tr key={rowKey(row)} className="h-11 hover:bg-slate-50">
+                <tr key={rowKey(row)} className="h-11 hover:bg-surface-hover">
                   {columns.map((column) => (
                     <td key={column.key} className={cn("px-4 py-2", alignClass[column.align ?? "left"], column.className)}>
                       {column.cell(row)}
@@ -163,7 +163,7 @@ export function Pagination({
         <nav aria-label="Phân trang" className="flex items-center gap-1">
           <button
             type="button"
-            className="rounded-md border border-border p-1.5 hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-md border border-border p-1.5 hover:bg-surface-hover disabled:opacity-40"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
             aria-label="Trang trước"
@@ -175,7 +175,7 @@ export function Pagination({
           </span>
           <button
             type="button"
-            className="rounded-md border border-border p-1.5 hover:bg-slate-50 disabled:opacity-40"
+            className="rounded-md border border-border p-1.5 hover:bg-surface-hover disabled:opacity-40"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= pages}
             aria-label="Trang sau"

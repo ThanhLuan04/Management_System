@@ -5,21 +5,49 @@
  * Component chỉ dùng tên vai trò (bg-primary, text-muted…), không dùng mã màu trực tiếp.
  */
 :root {
-  --background: #f8fafc;
+  --background: #f4f6fa;
   --card: #ffffff;
   --foreground: #0f172a;
   --muted: #64748b;
-  --border: #e2e8f0;
+  /* Chữ/icon phụ: ô ảnh trống, icon trang rỗng, mã yêu cầu */
+  --subtle: #94a3b8;
+  --border: #e3e8ef;
+  /* Nền phụ: hover dòng bảng, tiêu đề bảng, nút phụ */
+  --surface-hover: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --surface-strong: #e2e8f0;
+  --skeleton: #e2e8f0;
+  --overlay: rgb(15 23 42 / 0.5);
+  --card-shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-foreground: #ffffff;
+  --primary-soft: #eff6ff;
+  --primary-strong: #1d4ed8;
+  /* Mỗi màu trạng thái có 3 sắc: chính (icon, viền), soft (nền nhạt), strong (chữ trên nền nhạt — đạt tương phản AA) */
   --success: #16a34a;
+  --success-soft: #f0fdf4;
+  --success-strong: #15803d;
   --warning: #f59e0b;
+  --warning-soft: #fffbeb;
+  --warning-strong: #b45309;
   --destructive: #dc2626;
+  --destructive-hover: #b91c1c;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #fef2f2;
+  --destructive-strong: #b91c1c;
   --info: #0284c7;
+  --info-soft: #f0f9ff;
+  --info-strong: #0369a1;
+
+  /* Sidebar luôn tối (cả ở chế độ sáng) */
   --sidebar: #0f172a;
   --sidebar-foreground: #cbd5e1;
+  --sidebar-muted: #64748b;
   --sidebar-active: #1e293b;
+  --sidebar-active-foreground: #ffffff;
+  --sidebar-accent: #60a5fa;
 
   /* Biểu đồ (palette đã kiểm tra mù màu bằng dataviz validator) */
   --chart-surface: #ffffff;
@@ -35,17 +63,39 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
   --color-border: var(--border);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-strong: var(--surface-strong);
+  --color-skeleton: var(--skeleton);
+  --color-overlay: var(--overlay);
+  --shadow-card: var(--card-shadow);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-strong: var(--primary-strong);
   --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-strong: var(--success-strong);
   --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-strong: var(--warning-strong);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-strong: var(--destructive-strong);
   --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-strong: var(--info-strong);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
 }

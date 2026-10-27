@@ -72,7 +72,7 @@ export function ProductDetailPage() {
       <div className="grid gap-6 xl:grid-cols-3">
         <Card>
           <CardContent className="space-y-5">
-            <ProductThumb url={p.image_url} name={p.name} className="h-40 w-40" />
+            <ProductThumb url={p.image_url} name={p.name} className="h-40 w-40 rounded-xl text-5xl" />
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <Info label="Trạng thái"><ActiveBadge active={p.is_active} /></Info>
               <Info label="Tồn kho"><StockCell quantity={p.quantity} isLow={p.is_low_stock} /></Info>
@@ -120,7 +120,7 @@ export function ProductDetailPage() {
                         <td
                           className={cn(
                             "tabular px-3 py-2 text-right font-medium",
-                            tx.quantity_change > 0 ? "text-green-700" : "text-red-700",
+                            tx.quantity_change > 0 ? "text-success-strong" : "text-destructive-strong",
                           )}
                         >
                           {tx.quantity_change > 0 ? "+" : "−"}

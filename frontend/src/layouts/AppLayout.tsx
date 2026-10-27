@@ -56,7 +56,7 @@ function UserMenu() {
 
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">
+      <DropdownMenu.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
           {user.full_name.charAt(0).toUpperCase()}
         </span>
@@ -74,14 +74,14 @@ function UserMenu() {
         >
           <DropdownMenu.Item
             onSelect={() => navigate("/profile")}
-            className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 outline-none data-[highlighted]:bg-slate-100"
+            className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 outline-none data-[highlighted]:bg-surface-muted"
           >
             <UserRound className="h-4 w-4" aria-hidden /> Hồ sơ cá nhân
           </DropdownMenu.Item>
           <DropdownMenu.Separator className="my-1 h-px bg-border" />
           <DropdownMenu.Item
             onSelect={handleLogout}
-            className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-destructive outline-none data-[highlighted]:bg-red-50"
+            className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-destructive outline-none data-[highlighted]:bg-destructive-soft"
           >
             <LogOut className="h-4 w-4" aria-hidden /> Đăng xuất
           </DropdownMenu.Item>
@@ -110,7 +110,7 @@ export function AppLayout() {
 
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-          <div className="absolute inset-0 bg-slate-900/50" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-0 bg-overlay" onClick={() => setMobileOpen(false)} />
           <div className="absolute inset-y-0 left-0 w-64">
             <Sidebar onNavigate={() => setMobileOpen(false)} />
             <button
@@ -126,7 +126,7 @@ export function AppLayout() {
 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur sm:px-6">
         <button
-          className="rounded-md p-2 hover:bg-slate-100 lg:hidden"
+          className="rounded-md p-2 hover:bg-surface-muted lg:hidden"
           onClick={() => setMobileOpen(true)}
           aria-label="Mở menu"
         >

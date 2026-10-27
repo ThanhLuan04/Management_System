@@ -3,7 +3,7 @@ import type { Ref, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { cn } from "@/utils/cn";
 
 const fieldBase =
-  "w-full rounded-md border border-border bg-card px-3 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:bg-slate-50 disabled:opacity-70";
+  "w-full rounded-md border border-border bg-card px-3 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none disabled:bg-surface-hover disabled:opacity-70";
 const invalidClass = "border-destructive focus:border-destructive focus:ring-destructive/20";
 
 export function Select({
