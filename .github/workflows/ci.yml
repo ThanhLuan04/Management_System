@@ -1,0 +1,126 @@
+# Chạy toàn bộ kiểm tra cho mỗi lần push / pull request vào main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "24"
+  # Chỉ dùng trong CI: database tạm của service container, khóa JWT giả
+  DATABASE_URL: postgresql+psycopg://smartstore:ci_password@localhost:5432/smartstore_dev
+  TEST_DATABASE_URL: postgresql+psycopg://smartstore:ci_password@localhost:5432/smartstore_test
+  JWT_SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+
+jobs:
+  backend:
+    name: Backend (ruff, pytest, pip-audit)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: smartstore
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: smartstore_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U smartstore" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Test
+        run: pytest -q
+      - name: Quét lỗ hổng thư viện
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+
+  frontend:
+    name: Frontend (typecheck, vitest, build, npm audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Quét lỗ hổng thư viện
+        run: npm audit --audit-level=high
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: smartstore
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: smartstore_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U smartstore" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # playwright.config.ts gọi backend/.venv/bin/python
+      - name: Cài backend
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+      - name: Cài frontend và trình duyệt
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: E2E
+        working-directory: frontend
+        run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
