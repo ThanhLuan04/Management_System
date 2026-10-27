@@ -58,3 +58,54 @@ body {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- In hóa đơn 80mm: chỉ in vùng .print-root, ẩn toàn bộ giao diện ---------- */
+.print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+  body > *:not(.print-root) {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .print-root {
+    display: block;
+  }
+  .receipt {
+    width: 72mm;
+    font: 12px/1.4 "Be Vietnam Pro", system-ui, sans-serif;
+    color: #000;
+    font-variant-numeric: tabular-nums;
+  }
+  .receipt hr {
+    border: 0;
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+  .receipt-center {
+    text-align: center;
+  }
+  .receipt-strong {
+    font-weight: 700;
+  }
+  .receipt-title {
+    margin: 6px 0;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .receipt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .receipt-line {
+    margin-bottom: 4px;
+  }
+}

@@ -10,6 +10,10 @@ import { AdjustmentFormPage } from "@/features/inventory/AdjustmentFormPage";
 import { InventoryPage } from "@/features/inventory/InventoryPage";
 import { CustomerDetailPage } from "@/features/partners/CustomerDetailPage";
 import { CustomersPage } from "@/features/partners/CustomersPage";
+import { PosPage } from "@/features/pos/PosPage";
+import { OrderDetailPage } from "@/features/sales/OrderDetailPage";
+import { OrderListPage } from "@/features/sales/OrderListPage";
+import { ReturnDetailPage, ReturnListPage } from "@/features/sales/ReturnPages";
 import { SuppliersPage } from "@/features/partners/SuppliersPage";
 import { PurchaseDetailPage } from "@/features/purchases/PurchaseDetailPage";
 import { PurchaseFormPage } from "@/features/purchases/PurchaseFormPage";
@@ -30,9 +34,6 @@ function page(path: string, crumb: string, permission: Permission | null, elemen
 
 // Các module còn lại dùng trang tạm; sẽ thay bằng trang thật ở các bước tiếp theo của Giai đoạn 6
 const upcoming: [string, string, Permission | null][] = [
-  ["pos", "Bán hàng", P.ORDERS_CREATE],
-  ["orders/*", "Đơn hàng", P.ORDERS_VIEW],
-  ["returns", "Trả hàng", P.ORDERS_VIEW],
   ["reports", "Báo cáo", P.REPORTS_VIEW],
   ["users", "Người dùng", P.USERS_MANAGE],
   ["settings", "Cài đặt", P.SETTINGS_MANAGE],
@@ -74,6 +75,23 @@ export const router = createBrowserRouter([
           page("new", "Thêm sản phẩm", P.CATALOG_MANAGE, <ProductFormPage key="new" />),
           page(":id", "Chi tiết", P.CATALOG_VIEW, <ProductDetailPage />),
           page(":id/edit", "Sửa sản phẩm", P.CATALOG_MANAGE, <ProductFormPage key="edit" />),
+        ],
+      },
+      page("pos", "Bán hàng", P.ORDERS_CREATE, <PosPage />),
+      {
+        path: "orders",
+        handle: { crumb: "Đơn hàng" } satisfies RouteHandle,
+        children: [
+          { index: true, element: <RequirePermission permission={P.ORDERS_VIEW}><OrderListPage /></RequirePermission> },
+          page(":id", "Chi tiết đơn", P.ORDERS_VIEW, <OrderDetailPage />),
+        ],
+      },
+      {
+        path: "returns",
+        handle: { crumb: "Trả hàng" } satisfies RouteHandle,
+        children: [
+          { index: true, element: <RequirePermission permission={P.ORDERS_VIEW}><ReturnListPage /></RequirePermission> },
+          page(":id", "Chi tiết phiếu trả", P.ORDERS_VIEW, <ReturnDetailPage />),
         ],
       },
       page("categories", "Danh mục & thương hiệu", P.CATALOG_VIEW, <CategoriesPage />),
