@@ -369,6 +369,49 @@ def test_cancelled_orders_do_not_count_for_customer(client, cashier, manager, go
     assert (detail["order_count"], detail["total_spent"]) == (0, "0")
 
 
+def test_every_ledger_reference_type_resolves_to_a_code(client, cashier, manager, goods, db):
+    """Lịch sử kho phải hiện được mã chứng từ cho MỌI loại biến động (nhập, bán, trả, hủy, điều chỉnh)."""
+    from tests.factories import make_supplier
+
+    supplier = make_supplier(db)
+    purchase = client.post(
+        "/api/v1/purchases",
+        headers=manager,
+        json={
+            "supplier_id": supplier.id,
+            "items": [{"product_id": goods["milk"].id, "quantity": 5, "unit_cost": 9000}],
+        },
+    ).json()
+    client.post(f"/api/v1/purchases/{purchase['id']}/confirm", headers=manager)
+    sold = sell(client, cashier, [{"product_id": goods["milk"].id, "quantity": 2}])
+    give_back(client, cashier, sold, [(0, 1, "RESELLABLE")])
+    cancelled = sell(client, cashier, [{"product_id": goods["cake"].id, "quantity": 1}])
+    client.post(f"{ORDERS}/{cancelled['id']}/cancel", headers=manager, json={"reason": "Hủy đơn"})
+    client.post(
+        "/api/v1/inventory/adjustments",
+        headers=manager,
+        json={
+            "type": "ADJUSTMENT",
+            "reason": "Vỡ hàng",
+            "items": [{"product_id": goods["cake"].id, "quantity_change": -1}],
+        },
+    )
+
+    ledger = client.get("/api/v1/inventory/transactions", headers=manager, params={"page_size": 100}).json()[
+        "items"
+    ]
+
+    assert {t["type"] for t in ledger} == {"PURCHASE", "SALE", "SALE_RETURN", "ORDER_CANCEL", "ADJUSTMENT"}
+    missing = [(t["type"], t["reference_type"]) for t in ledger if not t["reference_code"]]
+    assert missing == []
+    by_type = {t["type"]: t["reference_code"] for t in ledger}
+    assert by_type["PURCHASE"].startswith("PN")
+    assert by_type["SALE"].startswith("HD")
+    assert by_type["SALE_RETURN"].startswith("TH")
+    assert by_type["ORDER_CANCEL"] == cancelled["code"]
+    assert by_type["ADJUSTMENT"].startswith("DC")
+
+
 def test_ledger_matches_stock_after_sales_returns_and_cancels(client, cashier, manager, goods, db):
     a = sell(
         client,

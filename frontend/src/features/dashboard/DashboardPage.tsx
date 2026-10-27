@@ -142,7 +142,7 @@ export function DashboardPage() {
                   label="Sắp hết hàng"
                   value={formatNumber(kpis.low_stock_count)}
                   tone={kpis.low_stock_count > 0 ? "warning" : undefined}
-                  hint={<Link to="/inventory?low_stock=1" className="text-primary hover:underline">Xem tồn kho</Link>}
+                  hint={<Link to="/inventory?low_stock=true" className="text-primary hover:underline">Xem tồn kho</Link>}
                 />
               </>
             )}

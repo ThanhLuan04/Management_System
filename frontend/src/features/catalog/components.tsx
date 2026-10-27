@@ -4,6 +4,16 @@ import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/utils/cn";
 import { formatNumber } from "@/utils/format";
 
+import type { StockTransaction } from "./api";
+
+export const TRANSACTION_LABELS: Record<StockTransaction["type"], string> = {
+  PURCHASE: "Nhập hàng",
+  SALE: "Bán hàng",
+  SALE_RETURN: "Khách trả hàng",
+  ORDER_CANCEL: "Hủy đơn",
+  ADJUSTMENT: "Điều chỉnh kho",
+};
+
 export function ProductThumb({ url, name, className }: { url: string | null; name: string; className?: string }) {
   return url ? (
     <img src={url} alt={name} loading="lazy" className={cn("h-10 w-10 rounded-md border border-border object-cover", className)} />

@@ -1,16 +1,14 @@
-import { Plus, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { Link } from "react-router";
 
 import { type Column, DataTable, Pagination } from "@/components/common/DataTable";
+import { SearchInput } from "@/components/common/SearchInput";
 import { PageHeader } from "@/components/common/States";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { P } from "@/features/auth/permissions";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useListParams } from "@/hooks/useListParams";
 import { formatMoney } from "@/utils/format";
 
@@ -22,14 +20,6 @@ export function ProductListPage() {
   const canManage = can(P.CATALOG_MANAGE);
   const list = useListParams("-created_at");
   const { filters } = list.state;
-
-  // Ô tìm kiếm: hiển thị ngay khi gõ, chỉ gọi API khi ngừng gõ 300ms
-  const [search, setSearch] = useState(filters.q ?? "");
-  const debouncedSearch = useDebouncedValue(search);
-  useEffect(() => {
-    // Chỉ phản ứng khi giá trị đã debounce đổi; filters/list đọc giá trị mới nhất tại thời điểm đó
-    if ((filters.q ?? "") !== debouncedSearch) list.setFilter("q", debouncedSearch || undefined);
-  }, [debouncedSearch]);
 
   const { data, error, isPending, isFetching, refetch } = useProducts(list.apiParams);
   const { data: categoryTree } = useCategoryTree();
@@ -102,17 +92,12 @@ export function ProductListPage() {
 
       <Card>
         <div className="flex flex-wrap gap-3 border-b border-border p-4">
-          <div className="relative min-w-60 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-            <Input
-              type="search"
-              placeholder="Tìm theo tên, SKU hoặc mã vạch…"
-              aria-label="Tìm sản phẩm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchInput
+            value={filters.q ?? ""}
+            onSearch={list.setSearch}
+            placeholder="Tìm theo tên, SKU hoặc mã vạch…"
+            label="Tìm sản phẩm"
+          />
           <Select
             aria-label="Lọc theo danh mục"
             value={filters.category_id ?? ""}
@@ -158,10 +143,10 @@ export function ProductListPage() {
           onRetry={() => refetch()}
           sort={list.state.sort}
           onSort={list.setSort}
-          emptyTitle={Object.keys(filters).length ? "Không có sản phẩm phù hợp bộ lọc" : "Chưa có sản phẩm"}
+          emptyTitle={list.hasFilters ? "Không có sản phẩm phù hợp bộ lọc" : "Chưa có sản phẩm"}
           emptyAction={
-            Object.keys(filters).length ? (
-              <Button variant="outline" size="sm" onClick={() => { setSearch(""); list.reset(); }}>
+            list.hasFilters ? (
+              <Button variant="outline" size="sm" onClick={list.reset}>
                 Xóa bộ lọc
               </Button>
             ) : (

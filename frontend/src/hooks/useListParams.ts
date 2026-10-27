@@ -21,7 +21,8 @@ export function useListParams(defaultSort?: string) {
   const state: ListState = useMemo(() => {
     const filters: Record<string, string> = {};
     searchParams.forEach((value, key) => {
-      if (!["page", "page_size", "sort"].includes(key) && value !== "") filters[key] = value;
+      // "tab" thuộc về giao diện (tab đang mở), không phải bộ lọc gửi API
+      if (!["page", "page_size", "sort", "tab"].includes(key) && value !== "") filters[key] = value;
     });
     const size = Number(searchParams.get("page_size"));
     return {
@@ -56,13 +57,26 @@ export function useListParams(defaultSort?: string) {
     [state],
   );
 
+  // useCallback: các hàm này được truyền vào effect của SearchInput → cần giữ nguyên tham chiếu
+  const setFilter = useCallback((key: string, value: string | undefined) => update({ [key]: value }), [update]);
+  const setSearch = useCallback((value: string | undefined) => update({ q: value }), [update]);
+
   return {
     state,
     apiParams,
-    setFilter: (key: string, value: string | undefined) => update({ [key]: value }),
+    setFilter,
+    setSearch,
     setPage: (page: number) => update({ page }, false),
     setPageSize: (size: number) => update({ page_size: size }),
     setSort: (sort: string) => update({ sort }),
-    reset: () => setSearchParams(new URLSearchParams(), { replace: true }),
+    reset: () =>
+      setSearchParams(
+        (prev) => {
+          const tab = prev.get("tab");
+          return new URLSearchParams(tab ? { tab } : {});
+        },
+        { replace: true },
+      ),
+    hasFilters: Object.keys(state.filters).length > 0,
   };
 }

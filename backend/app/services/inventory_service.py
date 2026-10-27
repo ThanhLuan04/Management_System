@@ -13,6 +13,8 @@ from app.models import (
     InventoryTransaction,
     Product,
     PurchaseOrder,
+    SalesOrder,
+    SalesReturn,
     StockAdjustment,
     StockAdjustmentItem,
     TransactionType,
@@ -40,9 +42,12 @@ INVENTORY_SORT = {
     "stock_value": Inventory.quantity * Inventory.avg_cost,
 }
 
-# Bảng chứa mã chứng từ theo reference_type (bán hàng/trả hàng sẽ được bổ sung ở phần sau)
+# Bảng chứa mã chứng từ theo reference_type — mọi reference_type mà inventory_ops ghi ra đều phải có ở đây
+# (test_every_ledger_reference_type_resolves_to_a_code kiểm tra điều này)
 REFERENCE_MODELS = {
     "purchase_order": PurchaseOrder,
+    "sales_order": SalesOrder,
+    "sales_return": SalesReturn,
     "stock_adjustment": StockAdjustment,
 }
 

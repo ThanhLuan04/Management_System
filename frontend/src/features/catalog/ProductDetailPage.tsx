@@ -14,16 +14,8 @@ import { toApiError } from "@/services/apiError";
 import { cn } from "@/utils/cn";
 import { formatDateTime, formatMoney, formatNumber } from "@/utils/format";
 
-import { type StockTransaction, useProduct, useProductStock, useSetProductActive } from "./api";
-import { ActiveBadge, ProductThumb, StockCell } from "./components";
-
-export const TRANSACTION_LABELS: Record<StockTransaction["type"], string> = {
-  PURCHASE: "Nhập hàng",
-  SALE: "Bán hàng",
-  SALE_RETURN: "Khách trả hàng",
-  ORDER_CANCEL: "Hủy đơn",
-  ADJUSTMENT: "Điều chỉnh kho",
-};
+import { useProduct, useProductStock, useSetProductActive } from "./api";
+import { ActiveBadge, ProductThumb, StockCell, TRANSACTION_LABELS } from "./components";
 
 function Info({ label, children }: { label: string; children: React.ReactNode }) {
   return (
