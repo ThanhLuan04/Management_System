@@ -132,8 +132,15 @@ docs/              đặc tả, thiết kế, rà soát bảo mật, ảnh màn 
 
 ## Giới hạn hiện tại
 
-- Một cửa hàng, một kho; chưa có khuyến mãi, tích điểm hay kết nối cổng thanh toán thật
-  (chuyển khoản/thẻ chỉ ghi nhận).
+**Chưa triển khai** (nằm ngoài phạm vi MVP, xem [đặc tả §9](docs/01-business-spec.md)):
+- Xuất Excel (hiện xuất CSV), hóa đơn điện tử, kết nối cổng thanh toán (chuyển khoản/thẻ chỉ ghi nhận).
+- Quên mật khẩu qua email (Admin đặt lại mật khẩu cho nhân viên).
+- Hủy phiếu nhập đã xác nhận (sai sót xử lý bằng phiếu điều chỉnh kho).
+- Giảm giá theo từng dòng, chương trình khuyến mãi, tích điểm khách hàng.
+- Thanh toán một đơn bằng nhiều phương thức; bán theo đơn vị lẻ (kg, m) — số lượng là số nguyên.
+- Nhiều chi nhánh / nhiều kho; lưu ảnh trên cloud.
+
+**Kỹ thuật:**
 - Ảnh sản phẩm lưu trên đĩa server; giới hạn đăng nhập lưu trong bộ nhớ một tiến trình
   (chạy nhiều instance cần Redis).
-- Chưa deploy; HTTPS, HSTS và CSP cho trang frontend sẽ cấu hình ở bước deploy.
+- Chưa đóng gói Docker và chưa deploy; HTTPS, HSTS và CSP cho trang frontend sẽ cấu hình khi deploy.
