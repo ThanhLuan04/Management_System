@@ -9,11 +9,16 @@ import { login } from "./support";
 const OUT = "../docs/screenshots";
 const DEMO_PASSWORD = "Demo@123";
 
-async function signedIn(browser: Browser, username: string, viewport?: { width: number; height: number }) {
-  // Context tạo tay không nhận `use` trong config → khai báo lại ngôn ngữ/múi giờ (ô ngày hiển thị dd/mm/yyyy)
-  const locale = { locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh" };
+async function signedIn(
+  browser: Browser,
+  username: string,
+  { viewport, dark = false }: { viewport?: { width: number; height: number }; dark?: boolean } = {},
+) {
+  // Context tạo tay không nhận `use` trong config → khai báo lại ngôn ngữ/múi giờ (ô ngày hiển thị dd/mm/yyyy).
+  // dark: giả lập hệ điều hành đang ở chế độ tối (ứng dụng mặc định "Theo hệ thống")
+  const base = { locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh", colorScheme: dark ? ("dark" as const) : ("light" as const) };
   const context = await browser.newContext(
-    viewport ? { ...locale, viewport, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { ...locale, viewport: { width: 1440, height: 900 } },
+    viewport ? { ...base, viewport, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { ...base, viewport: { width: 1440, height: 900 } },
   );
   const page = await context.newPage();
   await login(page, username, DEMO_PASSWORD);
@@ -62,6 +67,13 @@ test("chụp ảnh màn hình", async ({ browser, page }) => {
   await picker.blur();
   await shoot(cashier, "03-pos");
 
-  const mobile = await signedIn(browser, "quanly", { width: 390, height: 844 });
+  const mobile = await signedIn(browser, "quanly", { viewport: { width: 390, height: 844 } });
   await shoot(mobile, "09-dashboard-mobile", "/dashboard");
+
+  const dark = await signedIn(browser, "quanly", { dark: true });
+  await shoot(dark, "10-dashboard-dark", "/dashboard");
+  await shoot(dark, "11-products-dark", "/products");
+  await dark.goto("/reports");
+  await dark.getByRole("radio", { name: "30 ngày" }).click();
+  await shoot(dark, "12-reports-dark");
 });

@@ -21,7 +21,17 @@ Màu được khai báo bằng CSS variable, theo cách của shadcn, để sau 
 | `--info` | Trả một phần, thông tin | Sky 600 `#0284C7` |
 | Sidebar | Nền sidebar | Slate 900 `#0F172A`, chữ Slate 300 |
 
-Chế độ tối không thuộc MVP, nhưng hệ thống token đã sẵn sàng cho việc bổ sung.
+Bảng trên là token gốc ở thiết kế ban đầu. Danh sách đầy đủ và giá trị hiện tại nằm trong `frontend/src/index.css`.
+Mỗi màu trạng thái có thêm `-soft` (nền nhạt) và `-strong` (chữ trên nền nhạt). Ngoài ra có các token
+`--subtle`, `--surface-hover/muted/strong`, `--skeleton`, `--overlay` và token biểu đồ (`--series-*`, `--chart-*`).
+Component **không dùng màu cố định** (như `bg-slate-100`), chỉ dùng tên token.
+
+**Chế độ tối** (bổ sung sau MVP): người dùng chọn Sáng / Tối / Theo hệ thống ở thanh tiêu đề; lựa chọn lưu trên trình duyệt.
+Class `dark` trên `<html>` đổi giá trị token; `public/theme-init.js` áp dụng trước khi trang hiển thị nên không chớp trắng.
+Sidebar luôn tối ở cả hai chế độ. Màu biểu đồ chế độ tối được kiểm tra bằng dataviz validator trên nền thẻ `#131c2e`.
+Hóa đơn in luôn đen trên nền trắng.
+
+Ô ảnh sản phẩm trống hiện chữ cái đầu trên nền màu (màu cố định theo tên sản phẩm).
 
 ## 2. Typography
 
@@ -39,8 +49,8 @@ Chế độ tối không thuộc MVP, nhưng hệ thống token đã sẵn sàng
 ## 3. Spacing, bo góc, đổ bóng
 
 - Thang spacing 4px (Tailwind mặc định): khoảng cách trong thẻ 16–24px, giữa các section 24px.
-- Bo góc: input/nút 6px, thẻ/modal 8px.
-- Đổ bóng: thẻ dùng `shadow-sm`, modal dùng `shadow-lg`.
+- Bo góc: input/nút 6px, thẻ 12px, modal 8px, badge dạng viên thuốc (bo tròn hoàn toàn).
+- Đổ bóng: thẻ dùng `shadow-card` (nhẹ, đổi theo chế độ sáng/tối), modal dùng `shadow-lg`.
 - Breakpoint:
   - `< 768px`: sidebar thu thành drawer, bảng cuộn ngang.
   - `768–1279px`: sidebar dạng icon.

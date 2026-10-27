@@ -5,6 +5,7 @@ import { Link, Outlet, useMatches, useNavigate, useNavigation } from "react-rout
 import { toast } from "sonner";
 
 import { useAuth } from "@/features/auth/AuthProvider";
+import { ThemeMenu } from "@/features/theme/ThemeMenu";
 
 import { Sidebar } from "./Sidebar";
 
@@ -135,6 +136,7 @@ export function AppLayout() {
         <div className="min-w-0 flex-1">
           <Breadcrumb />
         </div>
+        <ThemeMenu />
         <UserMenu />
       </header>
 

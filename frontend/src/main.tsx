@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 
 import { router } from "./app/router";
 import { AuthProvider } from "./features/auth/AuthProvider";
+import { ThemeProvider, useTheme } from "./features/theme/ThemeProvider";
 import { ApiError } from "./services/apiError";
 import "./index.css";
 
@@ -21,14 +22,21 @@ const queryClient = new QueryClient({
   },
 });
 
+function ThemedToaster() {
+  const { resolved } = useTheme();
+  // Thành công: tự tắt 3s; lỗi: 6s — docs/05 §4
+  return <Toaster richColors theme={resolved} position="top-right" duration={3000} />;
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-      {/* Thành công: tự tắt 3s; lỗi: 6s — docs/05 §4 */}
-      <Toaster richColors position="top-right" duration={3000} />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+        <ThemedToaster />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

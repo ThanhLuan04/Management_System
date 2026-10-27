@@ -14,8 +14,12 @@ xây dựng theo từng giai đoạn: phân tích → thiết kế → backend �
 | **Báo cáo doanh thu & lợi nhuận** | **Tồn kho** |
 | ![Báo cáo](docs/screenshots/07-reports.png) | ![Tồn kho](docs/screenshots/06-inventory.png) |
 
+| **Chế độ tối** | **Danh sách sản phẩm** |
+| ![Chế độ tối](docs/screenshots/10-dashboard-dark.png) | ![Sản phẩm](docs/screenshots/05-products.png) |
+
 Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](docs/screenshots/04-orders.png) ·
-[sản phẩm](docs/screenshots/05-products.png) · [giao diện điện thoại](docs/screenshots/09-dashboard-mobile.png)
+[giao diện điện thoại](docs/screenshots/09-dashboard-mobile.png) ·
+[sản phẩm (tối)](docs/screenshots/11-products-dark.png) · [báo cáo (tối)](docs/screenshots/12-reports-dark.png)
 
 ## Chức năng
 
@@ -45,6 +49,8 @@ Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](doc
   Mật khẩu băm Argon2, giới hạn số lần đăng nhập, khóa tài khoản tạm thời.
 - **Bảo mật:** kiểm tra quyền trên từng endpoint, thu ngân không nhận được trường giá vốn, CORS allowlist,
   header bảo mật, lỗi không lộ stack trace, nhật ký thao tác. Chi tiết: [docs/06-security-review.md](docs/06-security-review.md).
+- **Giao diện:** màu khai báo bằng design token (không màu cố định trong component) → chế độ sáng/tối/theo hệ thống,
+  không chớp trắng khi tải; màu biểu đồ của từng chế độ được kiểm tra độ phân biệt cho người mù màu và độ tương phản.
 - **Frontend:** trạng thái danh sách (lọc, sắp xếp, trang) lưu trên URL; mọi trang tải theo nhu cầu
   (bundle JS chính ~118 kB gzip; thư viện form và biểu đồ tách chunk riêng); form validate bằng Zod và hiển thị lỗi từ server đúng ô nhập.
 

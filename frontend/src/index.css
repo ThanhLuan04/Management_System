@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* dark: áp dụng theo class "dark" trên <html> (người dùng chọn), không chỉ theo cài đặt hệ điều hành */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Design tokens — docs/05-ui-design-system.md.
  * Component chỉ dùng tên vai trò (bg-primary, text-muted…), không dùng mã màu trực tiếp.
@@ -55,6 +58,55 @@
   --chart-axis: #898781;
   --series-1: #2a78d6;
   --series-2: #eb6834;
+}
+
+/*
+ * Chế độ tối: class "dark" trên <html> (ThemeProvider + public/theme-init.js).
+ * Cùng tên token, chỉ đổi giá trị → component không cần class dark: riêng.
+ */
+.dark {
+  color-scheme: dark; /* ô ngày, thanh cuộn, select của trình duyệt cũng tối theo */
+  --background: #0b1120;
+  --card: #131c2e;
+  --foreground: #e2e8f0;
+  --muted: #94a3b8;
+  --subtle: #64748b;
+  --border: #243044;
+  --surface-hover: #172235;
+  --surface-muted: #1c283d;
+  --surface-strong: #27354d;
+  --skeleton: #22304a;
+  --overlay: rgb(2 6 23 / 0.7);
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-soft: rgb(59 130 246 / 0.15);
+  --primary-strong: #93c5fd;
+  --success: #22c55e;
+  --success-soft: rgb(34 197 94 / 0.14);
+  --success-strong: #86efac;
+  --warning: #f59e0b;
+  --warning-soft: rgb(245 158 11 / 0.14);
+  --warning-strong: #fcd34d;
+  --destructive: #ef4444;
+  --destructive-hover: #dc2626;
+  --destructive-soft: rgb(239 68 68 / 0.14);
+  --destructive-strong: #fca5a5;
+  --info: #38bdf8;
+  --info-soft: rgb(56 189 248 / 0.14);
+  --info-strong: #7dd3fc;
+
+  /* Sidebar tối hơn nền trang một bậc để vẫn tách khỏi nội dung */
+  --sidebar: #070c18;
+  --sidebar-active: #172235;
+
+  /* Biểu đồ: cùng hai sắc, bước sáng cho nền tối — đã chạy dataviz validator trên nền #131c2e (đạt cả 5 tiêu chí) */
+  --chart-surface: #131c2e;
+  --chart-grid: #243044;
+  --chart-axis: #8a94a6;
+  --series-1: #3987e5;
+  --series-2: #d95926;
 }
 
 @theme inline {
