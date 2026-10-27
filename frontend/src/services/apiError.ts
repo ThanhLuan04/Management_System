@@ -24,6 +24,8 @@ export class ApiError extends Error {
   }
 }
 
+const NETWORK_MESSAGE = "Không kết nối được máy chủ. Kiểm tra mạng và thử lại.";
+
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (isAxiosError(error)) {
@@ -32,8 +34,10 @@ export function toApiError(error: unknown): ApiError {
     if (error.response && body?.code) {
       return new ApiError(error.response.status, body.code, body.message, body.details, requestId);
     }
-    if (!error.response) {
-      return new ApiError(0, "NETWORK_ERROR", "Không kết nối được máy chủ. Kiểm tra mạng và thử lại.");
+    // Backend luôn gắn X-Request-ID; thiếu header nghĩa là lỗi đến từ proxy (Vite/nginx)
+    // khi backend không chạy hoặc không phản hồi.
+    if (!error.response || !requestId) {
+      return new ApiError(error.response?.status ?? 0, "NETWORK_ERROR", NETWORK_MESSAGE);
     }
     return new ApiError(error.response.status, "HTTP_ERROR", "Máy chủ trả về lỗi không xác định.", undefined, requestId);
   }
