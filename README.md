@@ -104,6 +104,10 @@ npm run dev
 
 Mở http://localhost:5173. Vite chuyển tiếp `/api` sang backend ở cổng 8000.
 
+**Windows — chạy nhanh:** sau khi cài đặt xong bước 1–3, bấm đúp **`start-dev.bat`** ở thư mục gốc: script kiểm tra
+môi trường, mở backend và frontend trong 2 cửa sổ riêng, chờ cả hai sẵn sàng rồi mở trình duyệt.
+Tắt bằng **`stop-dev.bat`** (hoặc đóng 2 cửa sổ "SmartStore").
+
 **Tài khoản demo** (sau khi chạy `seed_demo`): `quanly` (Quản lý), `thungan1`, `thungan2` (Thu ngân),
 mật khẩu `Demo@123`. Tài khoản Admin là tài khoản bạn tạo ở bước 2.
 
