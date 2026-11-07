@@ -20,6 +20,7 @@ Cột "Bằng chứng" chỉ ghi những gì đã thực sự chạy/kiểm tra;
 | Giới hạn upload | ≤ 2MB, kiểm tra nội dung file thật (không tin tên/Content-Type), tên file ngẫu nhiên | pytest upload file giả ảnh, file quá lớn, thu ngân upload → 403 |
 | JWT | Ghim thuật toán (`algorithms=[...]`), bắt buộc `sub`/`exp`/`type`, hết hạn 15 phút | Đọc code `app/core/security.py`; pytest token hết hạn / không hợp lệ |
 | SQL injection | Truy vấn qua SQLAlchemy có tham số | `ruff --select S` (bandit) trên `app/`: 0 cảnh báo |
+| Quên mật khẩu qua email (bổ sung sau) | Không lộ email tồn tại (cùng câu trả lời, gửi email sau response); mã 6 số chỉ lưu HMAC, hết hạn 15 phút, dùng một lần, tối đa 5 lần sai, khóa dòng khi kiểm tra; rate limit theo IP; mã không nằm trong tiêu đề email, không ghi log ở production; đặt lại xong đăng xuất mọi thiết bị | pytest `test_password_reset.py` (14 test, gồm hết hạn, dùng lại, nhập sai quá lượt, mã cũ, lưu dạng HMAC, log production) |
 
 ## Phát hiện và đã sửa trong lần rà soát này
 

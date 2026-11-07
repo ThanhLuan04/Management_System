@@ -50,6 +50,26 @@ Index("uq_users_username_lower", func.lower(User.username), unique=True)
 Index("uq_users_email_lower", func.lower(User.email), unique=True)
 
 
+class PasswordResetCode(Base):
+    """Mã 6 số khôi phục mật khẩu gửi qua email: chỉ lưu HMAC, có hạn, giới hạn số lần nhập sai, dùng một lần."""
+
+    __tablename__ = "password_reset_codes"
+    __table_args__ = (CheckConstraint("failed_attempts >= 0", name="failed_attempts_non_negative"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # HMAC-SHA256 (khóa bí mật của server) của "user_id:mã" — mã chỉ có 10^6 khả năng nên không dùng SHA-256 trần
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failed_attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 

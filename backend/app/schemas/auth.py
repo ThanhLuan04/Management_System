@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, EmailStr, StringConstraints
 
 from app.schemas.common import Password, Phone, StrictModel
 from app.schemas.user import FullName, OptionalEmail, RoleOut
@@ -35,6 +35,20 @@ class ProfileUpdate(StrictModel):
     full_name: FullName | None = None
     email: OptionalEmail = None
     phone: Phone = None
+
+
+class ForgotPasswordRequest(StrictModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+
+
+class ResetPasswordRequest(StrictModel):
+    email: EmailStr
+    code: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{6}$")]
+    new_password: Password
 
 
 class ChangePasswordRequest(StrictModel):

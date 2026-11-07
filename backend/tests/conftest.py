@@ -26,7 +26,11 @@ from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
-from app.api.v1.auth import login_rate_limiter  # noqa: E402
+from app.api.v1.auth import (  # noqa: E402
+    forgot_password_rate_limiter,
+    login_rate_limiter,
+    reset_password_rate_limiter,
+)
 from app.core.permissions import RoleCode  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.db.base import Base  # noqa: E402
@@ -70,7 +74,8 @@ def _clean_tables(tmp_path):
                 {"key": key, "value": json.dumps(value)},
             )
         conn.execute(text("DELETE FROM users"))
-    login_rate_limiter.reset()
+    for limiter in (login_rate_limiter, forgot_password_rate_limiter, reset_password_rate_limiter):
+        limiter.reset()
 
     # Ảnh upload trong test ghi vào thư mục tạm, không lẫn vào backend/uploads
     settings = get_settings()

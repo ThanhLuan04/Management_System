@@ -36,6 +36,19 @@ class Settings(BaseSettings):
     login_lock_minutes: int = 15
     login_rate_limit_per_minute: int = 10
 
+    # Quên mật khẩu: mã 6 số gửi qua email
+    password_reset_code_minutes: int = 15
+    password_reset_max_attempts: int = 5
+    password_reset_cooldown_seconds: int = 60  # không gửi mã mới cho cùng tài khoản trong khoảng này
+
+    # Gửi email (Gmail: smtp.gmail.com, cổng 587, mật khẩu ứng dụng). Bỏ trống SMTP_HOST:
+    # môi trường dev in mã ra log để thử; production không gửi được (ghi log lỗi, không ghi mã).
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+
     # Ảnh sản phẩm lưu trên đĩa server (MVP); được phục vụ tại /uploads/...
     upload_dir: Path = BACKEND_DIR / "uploads"
     max_image_bytes: int = 2 * 1024 * 1024

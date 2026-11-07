@@ -52,6 +52,11 @@ export const router = createBrowserRouter([
     lazy: async () => ({ Component: (await import("@/features/auth/LoginPage")).LoginPage }),
   },
   {
+    path: "/forgot-password",
+    HydrateFallback: PageLoading,
+    lazy: async () => ({ Component: (await import("@/features/auth/ForgotPasswordPage")).ForgotPasswordPage }),
+  },
+  {
     path: "/",
     HydrateFallback: PageLoading,
     element: (

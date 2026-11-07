@@ -20,7 +20,7 @@ from app.models.stock import (
     TransactionType,
 )
 from app.models.system import AuditLog, CodeSequence, Setting
-from app.models.user import RefreshToken, Role, User
+from app.models.user import PasswordResetCode, RefreshToken, Role, User
 
 __all__ = [
     "AdjustmentType",
@@ -33,6 +33,7 @@ __all__ = [
     "InventoryTransaction",
     "ItemCondition",
     "OrderStatus",
+    "PasswordResetCode",
     "Payment",
     "PaymentMethod",
     "Product",

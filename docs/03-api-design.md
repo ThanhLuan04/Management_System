@@ -82,6 +82,13 @@ Ký hiệu quyền: **A** = Admin, **M** = Manager, **C** = Cashier.
 | GET | `/auth/me` | Thông tin người dùng hiện tại + danh sách quyền | A M C |
 | PATCH | `/auth/me` | Cập nhật họ tên, email, SĐT của chính mình | A M C |
 | POST | `/auth/change-password` | Đổi mật khẩu | A M C |
+| POST | `/auth/forgot-password` | Gửi mã 6 số qua email; luôn trả `202` cùng một câu (không lộ email có tồn tại) | Công khai (5 lần/15 phút/IP) |
+| POST | `/auth/reset-password` | Đặt mật khẩu mới bằng email + mã; mở khóa, đăng xuất mọi thiết bị | Công khai (10 lần/15 phút/IP) |
+
+Mã khôi phục (bảng `password_reset_codes`, bổ sung sau MVP): chỉ lưu HMAC-SHA256 với khóa bí mật của server,
+hết hạn sau 15 phút, dùng một lần, tối đa 5 lần nhập sai; yêu cầu mã mới làm mã cũ hết hiệu lực;
+không gửi lại cho cùng tài khoản trong 60 giây. Lỗi chung `INVALID_RESET_CODE` (400) cho mọi trường hợp mã không dùng được.
+Quên mật khẩu Admin khi chưa có email: chạy `python -m scripts.reset_password --username admin` trên máy chủ.
 
 ### Users và hệ thống
 

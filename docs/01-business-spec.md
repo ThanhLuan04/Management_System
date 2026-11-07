@@ -283,7 +283,7 @@ Mọi lỗi trả về cùng định dạng:
 
 **Mở rộng (ghi vào README là chưa triển khai):**
 - Xuất Excel
-- Quên mật khẩu qua email
+- ~~Quên mật khẩu qua email~~ — đã làm sau MVP (mã 6 số qua email; xem docs/03). Qua SMS chưa làm (cần dịch vụ gửi tin có phí).
 - Hủy phiếu nhập đã xác nhận
 - Giảm giá theo dòng, chương trình khuyến mãi
 - Tích điểm khách hàng

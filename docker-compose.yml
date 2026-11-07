@@ -33,6 +33,12 @@ services:
       # Refresh/đăng xuất chỉ chấp nhận request từ đúng địa chỉ trang
       CORS_ORIGINS: ${PUBLIC_URL:?Cần đặt PUBLIC_URL trong .env}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Gửi email mã "Quên mật khẩu" (bỏ trống = không gửi)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     volumes:
       - uploads:/app/uploads
 

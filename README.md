@@ -133,6 +133,15 @@ Chỉ Caddy mở cổng ra ngoài.
 
 CI build image và chạy thử cả cụm cho mỗi lần push (kiểm tra trang, API, header, cổng không mở, sao lưu).
 
+## Quên mật khẩu
+
+- **Qua email:** trang đăng nhập → "Quên mật khẩu?" → nhập email của tài khoản → nhập mã 6 số nhận được + mật khẩu mới.
+  Tài khoản phải có email (Hồ sơ cá nhân, hoặc Admin điền ở trang Người dùng).
+  Để gửi email thật qua Gmail, điền `SMTP_*` trong `backend/.env` theo hướng dẫn ở `backend/.env.example`
+  (cần "Mật khẩu ứng dụng" của Google). Chưa cấu hình thì ở môi trường dev mã được in ra cửa sổ/terminal backend.
+- **Quên mật khẩu Admin, tài khoản chưa có email:** chạy trên máy chủ (thư mục `backend`)
+  `.\.venv\Scripts\python.exe -m scripts.reset_password --username admin` — đặt mật khẩu mới và mở khóa.
+
 ## Kiểm thử
 
 | Lệnh | Thư mục | Nội dung |
@@ -167,7 +176,7 @@ docs/              đặc tả, thiết kế, rà soát bảo mật, ảnh màn 
 
 **Chưa triển khai** (nằm ngoài phạm vi MVP, xem [đặc tả §9](docs/01-business-spec.md)):
 - Xuất Excel (hiện xuất CSV), hóa đơn điện tử, kết nối cổng thanh toán (chuyển khoản/thẻ chỉ ghi nhận).
-- Quên mật khẩu qua email (Admin đặt lại mật khẩu cho nhân viên).
+- Quên mật khẩu qua SMS (đã có qua email — xem bên dưới).
 - Hủy phiếu nhập đã xác nhận (sai sót xử lý bằng phiếu điều chỉnh kho).
 - Giảm giá theo từng dòng, chương trình khuyến mãi, tích điểm khách hàng.
 - Thanh toán một đơn bằng nhiều phương thức; bán theo đơn vị lẻ (kg, m) — số lượng là số nguyên.

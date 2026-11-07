@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import secrets
 from datetime import timedelta
 
@@ -75,6 +76,17 @@ def new_refresh_token() -> tuple[str, str]:
 
 def hash_refresh_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def new_reset_code() -> str:
+    """Mã 6 số ngẫu nhiên an toàn (secrets, không dùng random)."""
+    return f"{secrets.randbelow(10**6):06d}"
+
+
+def hash_reset_code(user_id: int, code: str) -> str:
+    # HMAC với khóa bí mật: lộ database cũng không thử được 10^6 mã để tìm ra mã gốc
+    key = get_settings().jwt_secret_key.encode()
+    return hmac.new(key, f"{user_id}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
 def _bearer_header() -> dict[str, str]:
