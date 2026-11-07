@@ -1,6 +1,6 @@
 {
   // Run and Debug (Ctrl+Shift+D): chọn "🚀 Chạy cả Backend + Frontend" rồi bấm F5.
-  // Dừng: Shift+F5 (stopAll tắt cả hai). Không chạy cùng lúc với start-dev.bat (trùng cổng 8000/5173).
+  // Dừng: Shift+F5 (stopAll tắt cả hai). Báo trùng cổng 8000/5173 → còn backend/frontend khác đang chạy, tắt trước.
   "version": "0.2.0",
   "configurations": [
     {
