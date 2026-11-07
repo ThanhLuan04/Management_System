@@ -188,7 +188,10 @@ def set_status(db: Session, actor: User, user_id: int, is_active: bool, ip: str 
     return user
 
 
-def reset_password(db: Session, actor: User, user_id: int, new_password: str, ip: str | None = None) -> None:
+def reset_password(
+    db: Session, actor: User | None, user_id: int, new_password: str, ip: str | None = None
+) -> None:
+    """Đặt mật khẩu mới, mở khóa, đăng xuất mọi phiên. actor=None: chạy từ dòng lệnh trên máy chủ (scripts.reset_password)."""
     user = get_user(db, user_id)
     user.password_hash = hash_password(new_password)
     user.failed_login_count = 0
@@ -197,7 +200,7 @@ def reset_password(db: Session, actor: User, user_id: int, new_password: str, ip
     audit_service.record(
         db,
         action="USER_RESET_PASSWORD",
-        user_id=actor.id,
+        user_id=actor.id if actor else None,
         entity_type="user",
         entity_id=user.id,
         ip_address=ip,
