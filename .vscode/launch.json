@@ -1,0 +1,33 @@
+{
+  // Run and Debug (Ctrl+Shift+D): chọn "🚀 Chạy cả Backend + Frontend" rồi bấm F5.
+  // Dừng: Shift+F5 (stopAll tắt cả hai). Không chạy cùng lúc với start-dev.bat (trùng cổng 8000/5173).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend: FastAPI (uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      // 127.0.0.1: chỉ máy này gọi được (0.0.0.0 sẽ mở API cho cả mạng LAN); cổng 8000 khớp proxy trong vite.config.ts
+      "args": ["app.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Frontend: Vite (npm.cmd run dev)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm.cmd run dev",
+      "cwd": "${workspaceFolder}/frontend"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "🚀 Chạy cả Backend + Frontend",
+      "configurations": ["Backend: FastAPI (uvicorn)", "Frontend: Vite (npm.cmd run dev)"],
+      "stopAll": true
+    }
+  ]
+}

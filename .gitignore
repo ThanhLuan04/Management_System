@@ -33,6 +33,7 @@ backups/
 # --- IDE / OS ---
 .vscode/*
 !.vscode/extensions.json
+!.vscode/launch.json
 .idea/
 .DS_Store
 Thumbs.db

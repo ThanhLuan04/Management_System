@@ -6,6 +6,9 @@ setlocal
 
 call :stop 8000 backend
 call :stop 5173 frontend
+rem Đóng luôn 2 cửa sổ do start-dev.bat mở — để lại cửa sổ trống dễ tưởng hệ thống vẫn đang chạy
+taskkill /FI "WINDOWTITLE eq SmartStore - Backend*" /T /F >nul 2>&1
+taskkill /FI "WINDOWTITLE eq SmartStore - Frontend*" /T /F >nul 2>&1
 echo.
 echo Xong. PostgreSQL vẫn chạy ^(là dịch vụ của Windows, không cần tắt^).
 ping -n 4 127.0.0.1 >nul
