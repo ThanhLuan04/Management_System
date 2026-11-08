@@ -24,6 +24,9 @@ from sqlalchemy import text
 from app.core.permissions import RoleCode
 from tests.factories import make_category, make_product, make_supplier, set_stock
 
+# Bán hàng / trả hàng / hủy đơn cần ca đang mở của két chung
+pytestmark = pytest.mark.usefixtures("open_shift")
+
 PARAMS = {"date_from": "2026-10-01", "date_to": "2026-10-03"}
 
 

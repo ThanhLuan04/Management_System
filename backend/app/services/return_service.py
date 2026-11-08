@@ -28,7 +28,7 @@ from app.models import (
     User,
 )
 from app.schemas.sales import ReturnCreate, ReturnItemOut, ReturnOut, ReturnSummaryOut
-from app.services import audit_service, code_gen, inventory_ops, settings_service
+from app.services import audit_service, code_gen, inventory_ops, settings_service, shift_service
 from app.services.pricing import line_refund
 from app.services.sales_service import Returned, lock_order, refundable_by_method, returned_by_item
 from app.utils.pagination import paginate
@@ -250,6 +250,8 @@ def create_return(
 
     total_refund = sum((refund for _, _, refund in planned), Decimal("0"))
     refunds = _allocate_refund(order, data.refund_method, total_refund)
+    # Khóa ca trước khi khóa tồn kho (cùng thứ tự với bán hàng → không deadlock khi đóng ca)
+    shift = shift_service.open_shift_for_money(db)
     sales_return = SalesReturn(
         code=code_gen.document_code(db, "TH", vn_today()),
         idempotency_key=key,
@@ -304,6 +306,7 @@ def create_return(
                 type="REFUND",
                 method=method,
                 amount=amount,
+                shift_id=shift.id,
                 created_by=actor.id,
             )
         )

@@ -30,6 +30,28 @@ const MILK = {
 
 const WATER = { ...MILK, id: 8, sku: "NUOC-500", barcode: null, name: "Nước suối 500ml", unit: "chai", sale_price: "5000.00", quantity: 0 };
 
+const SHIFT = {
+  id: 9,
+  code: "CA20261108-0001",
+  status: "OPEN",
+  opening_cash: "500000.00",
+  opened_by: { id: 3, full_name: "Thu Ngân" },
+  opened_at: "2026-11-08T00:00:00Z",
+  counted_cash: null,
+  expected_cash: null,
+  difference: null,
+  close_note: null,
+  closed_by: null,
+  closed_at: null,
+  current_expected_cash: "564000.00",
+  cash_received: "64000.00",
+  cash_refunded: "0.00",
+  received_by_method: [{ method: "CASH", amount: "64000.00" }],
+  refunded_by_method: [],
+  order_count: 1,
+  by_cashier: [{ user: { id: 3, full_name: "Thu Ngân" }, order_count: 1, revenue: "64000.00" }],
+};
+
 const ORDER = {
   id: 501,
   code: "HD20261027-0001",
@@ -61,6 +83,7 @@ vi.mock("@/services/http", () => ({
         return { data: { store_name: "SmartStore", store_address: "", store_phone: "", return_window_days: 7, my_max_discount_percent: "10" } };
       }
       if (url === "/products") return { data: { items: [MILK, WATER], page: 1, page_size: 8, total: 2 } };
+      if (url === "/shifts/current") return { data: { shift: SHIFT, suggested_opening_cash: "500000.00" } };
       if (url === "/categories") return { data: [{ id: 1, name: "Sữa", parent_id: null, is_active: true, children: [] }] };
       throw new Error(`unexpected GET ${url}`);
     }),
@@ -78,7 +101,7 @@ function renderPos() {
 }
 
 async function scanMilkTwiceAndPayCash() {
-  const picker = screen.getByRole("combobox", { name: /Tìm sản phẩm để bán/ });
+  const picker = await screen.findByRole("combobox", { name: /Tìm sản phẩm để bán/ });
   await userEvent.type(picker, "8930000000007{Enter}", { delay: null });
   await userEvent.type(picker, "8930000000007{Enter}", { delay: null });
   await screen.findByLabelText("Số lượng Sữa tươi 1L");
@@ -209,7 +232,7 @@ describe("PosPage — thanh toán kết hợp và chuyển khoản QR", () => {
   }
 
   async function scanMilkTwice() {
-    const picker = screen.getByRole("combobox", { name: /Tìm sản phẩm để bán/ });
+    const picker = await screen.findByRole("combobox", { name: /Tìm sản phẩm để bán/ });
     await userEvent.type(picker, "8930000000007{Enter}", { delay: null });
     await userEvent.type(picker, "8930000000007{Enter}", { delay: null });
     await screen.findByLabelText("Số lượng Sữa tươi 1L"); // 2 × 32.000 = 64.000

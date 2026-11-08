@@ -7,6 +7,7 @@ Phải đổi DATABASE_URL trước khi import bất kỳ module nào tạo engi
 
 import json
 import os
+from decimal import Decimal
 
 from app.core.config import BACKEND_DIR, Settings, get_settings
 
@@ -36,7 +37,7 @@ from app.core.security import hash_password  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.db.session import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Role, User  # noqa: E402  — import gói models cũng nạp toàn bộ bảng vào Base.metadata
+from app.models import CashShift, Role, ShiftStatus, User  # noqa: E402  — import gói models cũng nạp toàn bộ bảng vào Base.metadata
 from app.services.settings_service import DEFAULTS as SETTING_DEFAULTS  # noqa: E402
 
 DEFAULT_PASSWORD = "Passw0rd!"
@@ -120,6 +121,21 @@ def make_user(db):
         return user
 
     return _make_user
+
+
+@pytest.fixture
+def open_shift(db, make_user):
+    """
+    Ca đang mở của két chung — bán hàng / trả hàng / hủy đơn bắt buộc phải có.
+    Module test có giao dịch tiền dùng: pytestmark = pytest.mark.usefixtures("open_shift").
+    """
+    opener = make_user("truong_ca", RoleCode.CASHIER)
+    shift = CashShift(
+        code="CA-TEST-0001", status=ShiftStatus.OPEN, opening_cash=Decimal("0"), opened_by=opener.id
+    )
+    db.add(shift)
+    db.commit()
+    return shift
 
 
 def login(client: TestClient, username: str, password: str = DEFAULT_PASSWORD):

@@ -90,6 +90,18 @@ hết hạn sau 15 phút, dùng một lần, tối đa 5 lần nhập sai; yêu 
 không gửi lại cho cùng tài khoản trong 60 giây. Lỗi chung `INVALID_RESET_CODE` (400) cho mọi trường hợp mã không dùng được.
 Quên mật khẩu Admin khi chưa có email: chạy `python -m scripts.reset_password --username admin` trên máy chủ.
 
+### Ca làm việc (bổ sung sau MVP)
+
+| Method | URL | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/shifts/current` | Ca đang mở (`null` nếu chưa mở) + `suggested_opening_cash` | A M C |
+| POST | `/shifts/open` | Mở ca `{opening_cash}`; đã có ca mở → `SHIFT_ALREADY_OPEN` | A M C |
+| POST | `/shifts/{id}/close` | Đóng ca `{counted_cash, note?}`; lệch mà thiếu `note` → `CLOSE_NOTE_REQUIRED` (kèm expected/counted/difference) | A M C |
+| GET | `/shifts` | Lịch sử ca (`date_from`, `date_to`, `discrepancy_only`) | A M |
+| GET | `/shifts/{id}` | Chi tiết: tiền mặt, tiền theo phương thức, doanh số từng thu ngân | A M |
+
+`POST /orders`, `POST /orders/{id}/returns`, `POST /orders/{id}/cancel` trả `409 NO_OPEN_SHIFT` khi chưa mở ca.
+
 ### Users và hệ thống
 
 | Method | URL | Mô tả | Quyền |

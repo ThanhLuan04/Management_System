@@ -1,20 +1,25 @@
-import { BarChart3, CheckCircle2, Minus, Plus, Printer, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, Clock, Minus, Plus, Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 
+import { ErrorState } from "@/components/common/States";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { FormField, Input } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { Skeleton } from "@/components/ui/Spinner";
 import type { Product } from "@/features/catalog/api";
 import { ProductThumb } from "@/features/catalog/components";
 import { ProductPicker } from "@/features/catalog/ProductPicker";
 import type { Customer } from "@/features/partners/api";
-import { newIdempotencyKey, type Order, useCreateOrder, useMySales, useStoreSettings } from "@/features/sales/api";
+import { newIdempotencyKey, type Order, useCreateOrder, useStoreSettings } from "@/features/sales/api";
 import { PAYMENT_METHOD_LABELS } from "@/features/sales/OrderStatusBadge";
 import { PrintableReceipt } from "@/features/sales/Receipt";
+import { useCurrentShift } from "@/features/shifts/api";
+import { CloseShiftDialog, OpenShiftCard } from "@/features/shifts/components";
 import { toApiError } from "@/services/apiError";
 import { cn } from "@/utils/cn";
 import { formatMoney, formatNumber, toNumber } from "@/utils/format";
@@ -28,33 +33,13 @@ import { transferReference } from "./vietqr";
 
 const METHODS: PayMode[] = ["CASH", "BANK_TRANSFER", "CARD", "MIXED"];
 
-function MySalesDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const { data, isPending } = useMySales(open);
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="Doanh số hôm nay của tôi" description="Dùng để đối chiếu tiền mặt khi giao ca.">
-      {isPending || !data ? (
-        <p className="text-sm text-muted">Đang tải…</p>
-      ) : (
-        <dl className="space-y-2 text-sm">
-          <div className="flex justify-between"><dt className="text-muted">Số đơn</dt><dd className="tabular">{formatNumber(data.order_count)}</dd></div>
-          <div className="flex justify-between"><dt className="text-muted">Doanh thu gộp</dt><dd className="tabular">{formatMoney(data.gross_revenue)}</dd></div>
-          <div className="flex justify-between"><dt className="text-muted">Đã hoàn trả</dt><dd className="tabular">−{formatMoney(data.refunds)}</dd></div>
-          {data.received_by_method.map((m) => (
-            <div key={m.method} className="flex justify-between"><dt className="text-muted">Thu {PAYMENT_METHOD_LABELS[m.method].toLowerCase()}</dt><dd className="tabular">{formatMoney(m.amount)}</dd></div>
-          ))}
-          <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
-            <dt>Tiền mặt phải có trong két</dt>
-            <dd className="tabular">{formatMoney(data.cash_in_drawer)}</dd>
-          </div>
-        </dl>
-      )}
-    </Dialog>
-  );
-}
-
 export function PosPage() {
   const store = useStoreSettings();
   const createOrder = useCreateOrder();
+  const queryClient = useQueryClient();
+  // Két chung: phải có ca đang mở mới bán được (máy chủ cũng chặn)
+  const current = useCurrentShift();
+  const shift = current.data?.shift ?? null;
 
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -69,7 +54,7 @@ export function PosPage() {
   // product_id → số còn trong kho theo server (khi server báo hết hàng)
   const [shortages, setShortages] = useState<Record<number, number>>({});
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
-  const [showMySales, setShowMySales] = useState(false);
+  const [showShift, setShowShift] = useState(false);
 
   // Một key cho mỗi giỏ hàng: chỉ đổi sau khi bán xong / xóa giỏ. Bấm lại sau lỗi mạng dùng đúng key cũ.
   const idempotencyKey = useRef(newIdempotencyKey());
@@ -159,6 +144,11 @@ export function PosPage() {
             case "INSUFFICIENT_PAYMENT":
               setErrors((e) => (method === "MIXED" ? { ...e, split: apiError.message } : { ...e, cash: apiError.message }));
               break;
+            case "NO_OPEN_SHIFT":
+              // Ca vừa được đóng ở máy khác → tải lại trạng thái ca (màn hình chuyển sang mở ca, giỏ hàng giữ nguyên)
+              toast.error(apiError.message);
+              queryClient.invalidateQueries({ queryKey: ["shifts"] });
+              break;
             case "PAYMENT_MISMATCH":
               // Giá trên máy chủ khác lúc thêm vào giỏ (vừa đổi giá) → tổng mới khác số đã chia
               setErrors((e) => ({ ...e, split: apiError.message }));
@@ -201,12 +191,23 @@ export function PosPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  if (current.isPending) return <Skeleton className="h-96" />;
+  if (current.error) return <ErrorState error={current.error} onRetry={() => current.refetch()} />;
+  if (!shift) {
+    return (
+      <>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight">Bán hàng</h1>
+        <OpenShiftCard suggested={current.data.suggested_opening_cash} />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Bán hàng</h1>
-        <Button variant="outline" size="sm" onClick={() => setShowMySales(true)}>
-          <BarChart3 className="h-4 w-4" aria-hidden /> Doanh số hôm nay
+        <h1 className="text-2xl font-semibold tracking-tight">Bán hàng</h1>
+        <Button variant="outline" size="sm" onClick={() => setShowShift(true)}>
+          <Clock className="h-4 w-4" aria-hidden /> Ca {shift.code} · Đóng ca
         </Button>
       </div>
 
@@ -488,7 +489,7 @@ export function PosPage() {
           <PrintableReceipt order={lastOrder} store={store.data} />
         </>
       )}
-      <MySalesDialog open={showMySales} onOpenChange={setShowMySales} />
+      <CloseShiftDialog shift={shift} open={showShift} onOpenChange={setShowShift} />
     </>
   );
 }

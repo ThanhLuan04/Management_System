@@ -20,13 +20,16 @@ xây dựng theo từng giai đoạn: phân tích → thiết kế → backend �
 Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](docs/screenshots/04-orders.png) ·
 [giao diện điện thoại](docs/screenshots/09-dashboard-mobile.png) ·
 [sản phẩm (tối)](docs/screenshots/11-products-dark.png) · [báo cáo (tối)](docs/screenshots/12-reports-dark.png) ·
-[thanh toán kết hợp + VietQR](docs/screenshots/14-pos-vietqr.png) · [cài đặt VietQR](docs/screenshots/13-settings-vietqr.png)
+[thanh toán kết hợp + VietQR](docs/screenshots/14-pos-vietqr.png) · [cài đặt VietQR](docs/screenshots/13-settings-vietqr.png) ·
+[lịch sử ca](docs/screenshots/15-shifts.png) · [chi tiết ca lệch tiền](docs/screenshots/16-shift-detail.png)
 
 ## Chức năng
 
 - **Bán hàng (POS):** tìm sản phẩm hoặc quét mã vạch, giảm giá theo % hoặc số tiền (có giới hạn theo vai trò),
   tiền mặt / chuyển khoản / thẻ hoặc **kết hợp** nhiều cách, **mã VietQR** có sẵn số tiền (tạo ngay trên máy),
   gợi ý tiền khách đưa, in hóa đơn 80mm, phím tắt F2/F9.
+- **Ca làm việc (két chung):** mở ca với tiền đầu ca, mọi giao dịch tiền gắn vào ca, đóng ca đếm két — hệ thống tính
+  tiền mặt phải có và chênh lệch (lệch phải ghi lý do); lịch sử ca với doanh số từng thu ngân.
 - **Đơn hàng & trả hàng:** hủy đơn trong ngày, trả hàng trong thời hạn cấu hình (mặc định 7 ngày),
   hàng còn bán được nhập lại kho, hàng hỏng thì không; tiền hoàn tính theo giá sau giảm giá.
 - **Nhập hàng:** phiếu nháp → xác nhận nhập kho; giá vốn bình quân gia quyền được tính lại sau mỗi lần nhập.

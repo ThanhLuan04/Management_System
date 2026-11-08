@@ -70,6 +70,8 @@ class SalesOrder(Base):
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     note: Mapped[str | None] = mapped_column(String(500))
+    # Ca bán đơn này (trống với đơn tạo trước khi có tính năng ca làm việc)
+    shift_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("cash_shifts.id"), index=True)
     created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -154,6 +156,8 @@ class Payment(Base):
     cash_received: Mapped[Decimal | None] = mapped_column(Numeric(15, 2))
     change_amount: Mapped[Decimal | None] = mapped_column(Numeric(15, 2))
     reference_note: Mapped[str | None] = mapped_column(String(100))
+    # Ca có tiền ra/vào két: bán ở ca nào thu vào ca đó; hoàn tiền tính vào ca đang mở lúc hoàn (có thể khác ca bán)
+    shift_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("cash_shifts.id"), index=True)
     created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

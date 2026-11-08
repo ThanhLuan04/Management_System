@@ -18,7 +18,7 @@ from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -27,11 +27,24 @@ from app.core.permissions import RoleCode
 from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import SessionLocal
-from app.models import Brand, Category, Customer, Inventory, Product, Role, SalesOrder, Supplier, User
+from app.models import (
+    Brand,
+    CashShift,
+    Category,
+    Customer,
+    Inventory,
+    Payment,
+    Product,
+    Role,
+    SalesOrder,
+    ShiftStatus,
+    Supplier,
+    User,
+)
 from app.schemas.purchase import PurchaseCreate
 from app.schemas.sales import OrderCreate, ReturnCreate
-from app.services import purchase_service, return_service, sales_service
-from app.utils.time import VN_TZ, utcnow, vn_today
+from app.services import purchase_service, return_service, sales_service, shift_service
+from app.utils.time import VN_TZ, utcnow, vn_date_of, vn_day_range, vn_today
 
 DEMO_PASSWORD = "Demo@123"
 DEMO_USERS = [
@@ -317,6 +330,76 @@ def _renumber_documents(db: Session) -> None:
     db.commit()
 
 
+def _rebuild_shifts(db: Session, today: date, openers: list[User], rng: random.Random) -> None:
+    """
+    Nghiệp vụ chạy trong MỘT ca tạm (bán / trả / hủy bắt buộc có ca đang mở). Sau khi lùi thời gian, chia lại thành
+    mỗi ngày một ca 06:45–22:15 của két chung, chốt số liệu các ca đã qua; ca hôm nay để MỞ để bán tiếp ngay.
+    Vài ngày cố ý lệch tiền để màn hình lịch sử ca có dữ liệu chênh lệch.
+    """
+    temp = db.scalar(select(CashShift).where(CashShift.status == ShiftStatus.OPEN))
+    days_with_money = {vn_date_of(ts) for ts in db.scalars(select(Payment.created_at))}
+    days_with_orders = {vn_date_of(ts) for ts in db.scalars(select(SalesOrder.created_at))}
+    days = sorted(days_with_money | days_with_orders | {today})
+    shortfall_days = set(rng.sample(days[:-1], min(2, len(days) - 1)))
+    opening = Decimal("500000")
+    # Chốt ca tạm trước: database chỉ cho MỘT ca đang mở (mỗi ca theo ngày mở → gắn giao dịch → đóng rồi mới sang ngày sau)
+    temp.status, temp.expected_cash, temp.counted_cash, temp.closed_at = ShiftStatus.CLOSED, 0, 0, utcnow()
+    temp.code = f"TMP-{temp.id}"  # nhường mã CA<hôm nay>-0001 cho ca thật của hôm nay
+    db.flush()
+
+    for day in days:
+        opener = rng.choice(openers)
+        shift = CashShift(
+            code=f"CA{day:%Y%m%d}-0001",
+            status=ShiftStatus.OPEN,
+            opening_cash=opening,
+            opened_by=opener.id,
+            opened_at=min(_at(day, 6, 45), utcnow()),
+        )
+        db.add(shift)
+        db.flush()
+        start, end = vn_day_range(day, day)
+        for model in (Payment, SalesOrder):
+            db.execute(
+                update(model)
+                .where(model.created_at >= start, model.created_at < end)
+                .values(shift_id=shift.id)
+            )
+        if day == today:
+            continue
+        cash_in, cash_out = (
+            db.scalar(
+                select(func.coalesce(func.sum(Payment.amount), 0)).where(
+                    Payment.shift_id == shift.id, Payment.method == "CASH", Payment.type == payment_type
+                )
+            )
+            for payment_type in ("PAYMENT", "REFUND")
+        )
+        expected = opening + cash_in - cash_out
+        difference = Decimal("-10000") if day in shortfall_days else Decimal("0")
+        shift.status = ShiftStatus.CLOSED
+        shift.expected_cash = expected
+        shift.counted_cash = expected + difference
+        shift.difference = difference
+        shift.close_note = "Thối nhầm tiền cho khách" if difference else None
+        shift.closed_by = opener.id
+        shift.closed_at = _at(day, 22, 15)
+        db.flush()
+
+    # Ca tạm không còn giao dịch nào → xóa cùng dòng nhật ký mở ca của nó
+    db.execute(
+        text("DELETE FROM audit_logs WHERE entity_type = 'cash_shift' AND entity_id = :id"), {"id": temp.id}
+    )
+    db.delete(temp)
+    db.execute(text("DELETE FROM code_sequences WHERE prefix = 'CA'"))
+    for day in days:
+        db.execute(
+            text("INSERT INTO code_sequences (prefix, period, last_value) VALUES ('CA', :d, 1)"),
+            {"d": day.strftime("%Y%m%d")},
+        )
+    db.commit()
+
+
 def seed(days: int, reset: bool) -> None:
     _check_environment()
     rng = random.Random(2026)  # cố định → mỗi lần chạy ra cùng một bộ dữ liệu
@@ -364,6 +447,9 @@ def seed(days: int, reset: bool) -> None:
                 _at(middle, 8, 0),
                 Decimal("1.05"),
             )
+
+        # Bán / trả / hủy bắt buộc có ca đang mở → dùng một ca tạm, chia lại theo ngày ở cuối (_rebuild_shifts)
+        shift_service.open_shift(db, Decimal("0"), admin, None)
 
         stats = defaultdict(int)
         now_vn = utcnow().astimezone(VN_TZ)
@@ -436,6 +522,7 @@ def seed(days: int, reset: bool) -> None:
                     _move_return(db, sales_return.id, min(return_moment, now_vn))
                 db.commit()
 
+        _rebuild_shifts(db, today, cashiers, rng)
         _renumber_documents(db)
         print("Đã tạo:", ", ".join(f"{count} {name}" for name, count in stats.items()))
         print(f"Tài khoản demo (mật khẩu {DEMO_PASSWORD}):", ", ".join(u for u, _, _ in DEMO_USERS))

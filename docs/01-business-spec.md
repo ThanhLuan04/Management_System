@@ -208,7 +208,14 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-R03** Tiền hoàn mỗi dòng = `round(line_total × SL_trả / SL_bán)`. Nếu lần trả này trả hết phần còn lại của dòng, tiền hoàn = `line_total − tiền đã hoàn trước đó` để không lệch do làm tròn.
 - **BR-R04** Tình trạng hàng `RESELLABLE` thì cộng lại kho, `DAMAGED` thì không cộng.
 - **BR-R05** Hoàn tiền bằng phương thức khách đã trả. Đơn trả kết hợp: thu ngân chọn phương thức hoàn trước (mặc định tiền mặt), phần vượt số tiền còn lại đã thu bằng phương thức đó tự hoàn bằng phương thức khác — không phương thức nào hoàn quá số đã thu. Hủy đơn hoàn từng khoản đúng phương thức. Lý do trả bắt buộc.
-- **BR-R06** Trả hết mọi dòng thì đơn có `return_status = FULL`. Giá trị này được **tính từ dữ liệu**, không lưu trùng.
+
+### Ca làm việc (bổ sung sau MVP)
+
+- **BR-SH01** Một két tiền chung cho cả quầy: mỗi lúc chỉ có **một ca đang mở** (database chặn ca thứ hai). Mọi thu ngân bán chung trong ca đó.
+- **BR-SH02** Bán hàng, trả hàng, hủy đơn **bắt buộc có ca đang mở** (máy chủ chặn: `NO_OPEN_SHIFT`). Tiền thu gắn vào ca lúc bán; tiền hoàn gắn vào ca đang mở lúc hoàn (có thể khác ca đã bán).
+- **BR-SH03** Mở ca: nhập tiền đầu ca (gợi ý = tiền đếm được lúc đóng ca trước). Đóng ca: nhập tiền đếm thực tế; `tiền mặt phải có = tiền đầu ca + thu tiền mặt − hoàn tiền mặt`; `chênh lệch = tiền đếm − tiền phải có`; lệch khác 0 bắt buộc ghi lý do. Số liệu chốt lúc đóng ca, không đổi về sau.
+- **BR-SH04** Đóng ca chờ các giao dịch đang thực hiện hoàn tất rồi mới cộng số liệu — không giao dịch nào lọt ra ngoài ca. Không có thu/chi tiền mặt khác trong ca (rút/bổ sung tiền ghi vào lý do chênh lệch).
+- **BR-SH05** Thu ngân xem và đóng ca hiện tại; Quản lý, Admin xem lịch sử ca, lọc ca lệch tiền, xem doanh số từng thu ngân trong ca.- **BR-R06** Trả hết mọi dòng thì đơn có `return_status = FULL`. Giá trị này được **tính từ dữ liệu**, không lưu trùng.
 
 ### 7.6 Tồn kho
 

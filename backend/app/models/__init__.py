@@ -12,6 +12,7 @@ from app.models.sales import (
     SalesReturn,
     SalesReturnItem,
 )
+from app.models.shift import CashShift, ShiftStatus
 from app.models.stock import (
     AdjustmentType,
     InventoryTransaction,
@@ -26,6 +27,7 @@ __all__ = [
     "AdjustmentType",
     "AuditLog",
     "Brand",
+    "CashShift",
     "Category",
     "CodeSequence",
     "Customer",
@@ -47,6 +49,7 @@ __all__ = [
     "SalesReturn",
     "SalesReturnItem",
     "Setting",
+    "ShiftStatus",
     "StockAdjustment",
     "StockAdjustmentItem",
     "Supplier",

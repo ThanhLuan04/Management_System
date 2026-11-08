@@ -55,6 +55,16 @@ test("chụp ảnh màn hình", async ({ browser, page }) => {
   await expect(manager.getByRole("heading", { name: /^Đơn hàng HD/ })).toBeVisible();
   await shoot(manager, "08-order-detail");
 
+  // Ca làm việc: lịch sử ca (két chung) và chi tiết một ca lệch tiền
+  await shoot(manager, "15-shifts", "/shifts");
+  // Bộ lọc lưu trên URL, React Router cập nhật bất đồng bộ → bấm rồi CHỜ ô được tích (check() kiểm tra ngay lập tức)
+  await manager.getByLabel("Chỉ ca lệch tiền").click();
+  await expect(manager.getByLabel("Chỉ ca lệch tiền")).toBeChecked();
+  await expect(manager).toHaveURL(/discrepancy_only=true/);
+  await manager.getByRole("link", { name: /^CA/ }).first().click();
+  await expect(manager.getByRole("heading", { name: /^Ca CA/ })).toBeVisible();
+  await shoot(manager, "16-shift-detail");
+
   const cashier = await signedIn(browser, "thungan1");
   await cashier.waitForURL(/\/pos/);
   const picker = cashier.getByRole("combobox", { name: /Tìm sản phẩm để bán/ });

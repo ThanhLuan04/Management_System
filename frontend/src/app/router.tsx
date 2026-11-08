@@ -76,6 +76,9 @@ export const router = createBrowserRouter([
       section("returns", "Trả hàng", P.ORDERS_VIEW, async () => (await import("@/features/sales/ReturnPages")).ReturnListPage, [
         page(":id", "Chi tiết phiếu trả", P.ORDERS_VIEW, async () => (await import("@/features/sales/ReturnPages")).ReturnDetailPage),
       ]),
+      section("shifts", "Ca làm việc", P.REPORTS_VIEW, async () => (await import("@/features/shifts/ShiftPages")).ShiftListPage, [
+        page(":id", "Chi tiết ca", P.REPORTS_VIEW, async () => (await import("@/features/shifts/ShiftPages")).ShiftDetailPage),
+      ]),
       section("customers", "Khách hàng", P.CUSTOMERS_VIEW, async () => (await import("@/features/partners/CustomersPage")).CustomersPage, [
         page(":id", "Chi tiết", P.CUSTOMERS_VIEW, async () => (await import("@/features/partners/CustomerDetailPage")).CustomerDetailPage),
       ]),

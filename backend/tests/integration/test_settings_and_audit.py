@@ -98,6 +98,7 @@ def test_settings_validation(client, admin, payload, field):
     assert response.json()["error"]["details"][0]["field"] == field
 
 
+@pytest.mark.usefixtures("open_shift")
 def test_settings_change_takes_effect_in_business_rules(client, admin, auth_headers, db):
     from tests.factories import make_category, make_product, set_stock
 

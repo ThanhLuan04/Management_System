@@ -113,22 +113,11 @@ export interface StoreSettings {
   my_max_discount_percent: Money | null;
 }
 
-export interface MySales {
-  date: string;
-  order_count: number;
-  gross_revenue: Money;
-  refunds: Money;
-  net_revenue: Money;
-  received_by_method: { method: PaymentMethod; amount: Money }[];
-  refunded_by_method: { method: PaymentMethod; amount: Money }[];
-  cash_in_drawer: Money;
-}
-
-/** Bán / trả / hủy làm thay đổi đơn, tồn kho, sản phẩm, khách hàng và báo cáo → làm mới tất cả. */
+/** Bán / trả / hủy làm thay đổi đơn, tồn kho, sản phẩm, khách hàng, báo cáo và số liệu ca → làm mới tất cả. */
 function useInvalidateSales() {
   const queryClient = useQueryClient();
   return () => {
-    for (const key of ["orders", "returns", "products", "inventory", "customers", "reports"]) {
+    for (const key of ["orders", "returns", "products", "inventory", "customers", "reports", "shifts"]) {
       queryClient.invalidateQueries({ queryKey: [key] });
     }
   };
@@ -200,14 +189,6 @@ export function useStoreSettings() {
     queryKey: ["settings"],
     queryFn: async () => (await http.get<StoreSettings>("/settings")).data,
     staleTime: 5 * 60_000,
-  });
-}
-
-export function useMySales(enabled: boolean) {
-  return useQuery({
-    queryKey: ["reports", "my-sales"],
-    queryFn: async () => (await http.get<MySales>("/reports/my-sales")).data,
-    enabled,
   });
 }
 

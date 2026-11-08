@@ -14,6 +14,9 @@ from app.schemas.sales import ReturnCreate
 from app.services import return_service, sales_service
 from tests.factories import make_category, make_product, set_stock
 
+# Bán hàng / trả hàng / hủy đơn cần ca đang mở của két chung
+pytestmark = pytest.mark.usefixtures("open_shift")
+
 ORDERS = "/api/v1/orders"
 
 

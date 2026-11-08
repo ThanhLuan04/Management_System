@@ -96,9 +96,16 @@ test("nhập hàng → bán → trả hàng → báo cáo", async ({ browser }) 
   const cashierContext = await browser.newContext();
   const cashier = await cashierContext.newPage();
 
-  await test.step("6–7. Thu ngân bán 3 sản phẩm, thanh toán tiền mặt", async () => {
+  await test.step("Thu ngân mở ca (két chung) với 200.000 tiền lẻ", async () => {
     await login(cashier, CASHIER.username, CASHIER.password);
     await expect(cashier).toHaveURL(/\/pos/);
+    await expect(cashier.getByRole("heading", { name: "Chưa mở ca" })).toBeVisible();
+    await cashier.getByLabel("Tiền đầu ca").fill("200000");
+    await cashier.getByRole("button", { name: "Mở ca" }).click();
+    await expect(toast(cashier, /Đã mở ca CA/)).toBeVisible();
+  });
+
+  await test.step("6–7. Thu ngân bán 3 sản phẩm, thanh toán tiền mặt", async () => {
 
     // Máy quét mã vạch: gõ mã rồi Enter
     const picker = cashier.getByRole("combobox", { name: "Tìm sản phẩm để bán (F2)" });
@@ -141,6 +148,20 @@ test("nhập hàng → bán → trả hàng → báo cáo", async ({ browser }) 
     await expect(stat(admin, "Doanh thu thuần")).toContainText(money(30_000));
     await expect(stat(admin, "Giá vốn hàng bán")).toContainText(money(20_000));
     await expect(stat(admin, "Lợi nhuận gộp")).toContainText(money(10_000));
+  });
+
+  await test.step("11. Đóng ca: két phải có 200.000 + 45.000 − 15.000 = 230.000", async () => {
+    await cashier.goto("/pos");
+    await cashier.getByRole("button", { name: /Đóng ca/ }).click();
+    const dialog = cashier.getByRole("dialog");
+    await expect(dialog.getByText("Tiền mặt phải có").locator("..")).toContainText(money(230_000));
+    await dialog.getByLabel(/Tiền đếm được trong két/).fill("230000");
+    await expect(dialog.getByText("Khớp")).toBeVisible();
+    await dialog.getByRole("button", { name: "Đóng ca" }).click();
+    await expect(toast(cashier, /Đã đóng ca CA/)).toBeVisible();
+    // Đóng ca xong: không bán được nữa cho đến khi mở ca mới
+    await expect(cashier.getByRole("heading", { name: "Chưa mở ca" })).toBeVisible();
+    await expect(cashier.getByLabel("Tiền đầu ca")).toHaveValue("230.000"); // gợi ý = tiền đếm lúc đóng ca
   });
 
   await adminContext.close();

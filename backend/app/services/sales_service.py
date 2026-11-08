@@ -33,7 +33,7 @@ from app.models import (
     User,
 )
 from app.schemas.sales import OrderCreate, OrderItemOut, OrderOut, OrderSummaryOut, PaymentOut
-from app.services import audit_service, code_gen, inventory_ops, settings_service
+from app.services import audit_service, code_gen, inventory_ops, settings_service, shift_service
 from app.services.pricing import allocate_discount, discount_percent, order_discount, round_money
 from app.utils.pagination import apply_sort, paginate
 from app.utils.time import utcnow, vn_date_of, vn_day_range, vn_today
@@ -389,6 +389,9 @@ def create_order(
 
     payment_rows = _payment_rows(data, total, actor.id)
 
+    # Bắt buộc có ca đang mở (khóa chia sẻ: không chặn thu ngân khác, nhưng đóng ca phải chờ đơn này xong)
+    shift = shift_service.open_shift_for_money(db)
+
     # 3. Khóa tồn kho (thứ tự product_id tăng dần). Từ đây đến lúc commit, không ai khác bán được các sản phẩm này.
     inventories = inventory_ops.lock_inventory(db, product_ids)
 
@@ -425,6 +428,7 @@ def create_order(
         discount_amount=discount_amount,
         total_amount=total,
         note=data.note,
+        shift_id=shift.id,
         created_by=actor.id,
     )
     for item, line_subtotal, allocated in zip(
@@ -445,6 +449,8 @@ def create_order(
                 unit_cost=inventories[product.id].avg_cost,
             )
         )
+    for row in payment_rows:
+        row.shift_id = shift.id
     order.payments.extend(payment_rows)
     db.add(order)
     try:
@@ -518,6 +524,9 @@ def cancel_order(db: Session, order_id: int, reason: str, actor: User, ip: str |
             409,
             {"reason": "NOT_SAME_DAY"},
         )
+    # Khóa ca TRƯỚC khi khóa tồn kho — cùng thứ tự với bán hàng (ca → tồn kho) để không thể deadlock khi đóng ca.
+    # Tiền hoàn ra từ két của ca đang mở (có thể khác ca đã bán đơn này).
+    shift = shift_service.open_shift_for_money(db)
 
     now = utcnow()
     order.status = OrderStatus.CANCELLED
@@ -541,7 +550,9 @@ def cancel_order(db: Session, order_id: int, reason: str, actor: User, ip: str |
 
     # Hoàn lại từng khoản đúng phương thức khách đã trả (thanh toán kết hợp → nhiều dòng hoàn)
     for method, amount in refundable_by_method(order).items():
-        order.payments.append(Payment(type="REFUND", method=method, amount=amount, created_by=actor.id))
+        order.payments.append(
+            Payment(type="REFUND", method=method, amount=amount, shift_id=shift.id, created_by=actor.id)
+        )
 
     audit_service.record(
         db,
