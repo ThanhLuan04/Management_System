@@ -47,7 +47,7 @@ describe("OpenShiftCard", () => {
   it("pre-fills the cash counted at the previous close and opens the shift", async () => {
     wrap(<OpenShiftCard suggested="132000.00" />);
 
-    expect(screen.getByLabelText("Tiền đầu ca")).toHaveValue("132.000");
+    expect(screen.getByLabelText("Tiền đầu ca")).toHaveValue("132000"); // ô tự focus → hiện chữ số thô khi đang nhập
     await userEvent.click(screen.getByRole("button", { name: "Mở ca" }));
 
     expect(http.post).toHaveBeenCalledWith("/shifts/open", { opening_cash: "132000" });

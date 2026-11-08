@@ -161,7 +161,7 @@ test("nhập hàng → bán → trả hàng → báo cáo", async ({ browser }) 
     await expect(toast(cashier, /Đã đóng ca CA/)).toBeVisible();
     // Đóng ca xong: không bán được nữa cho đến khi mở ca mới
     await expect(cashier.getByRole("heading", { name: "Chưa mở ca" })).toBeVisible();
-    await expect(cashier.getByLabel("Tiền đầu ca")).toHaveValue("230.000"); // gợi ý = tiền đếm lúc đóng ca
+    await expect(cashier.getByLabel("Tiền đầu ca")).toHaveValue("230000"); // gợi ý = tiền đếm lúc đóng ca (ô đang focus)
   });
 
   await adminContext.close();
