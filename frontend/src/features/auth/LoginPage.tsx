@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, Navigate, useLocation, useNavigate, type Location } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { z } from "zod";
 
+import { homePath } from "@/app/guards";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input } from "@/components/ui/Input";
 import { toApiError } from "@/services/apiError";
@@ -20,9 +21,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function LoginPage() {
-  const { status, login } = useAuth();
+  const { status, user, login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -30,14 +30,14 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { username: "", password: "" } });
 
-  const from = (location.state as { from?: Location } | null)?.from?.pathname ?? "/";
-  if (status === "authenticated") return <Navigate to={from} replace />;
+  // Luôn vào trang chủ theo vai trò (không quay lại trang đang mở trước đó: người đăng nhập có thể là người khác)
+  if (status === "authenticated" && user) return <Navigate to={homePath(user)} replace />;
 
   const onSubmit = async (values: FormValues) => {
     setFormError(null);
     try {
-      await login(values.username, values.password);
-      navigate(from, { replace: true });
+      const me = await login(values.username, values.password);
+      navigate(homePath(me), { replace: true });
     } catch (error) {
       const apiError = toApiError(error);
       const lockedUntil = (apiError.details as { locked_until?: string } | undefined)?.locked_until;

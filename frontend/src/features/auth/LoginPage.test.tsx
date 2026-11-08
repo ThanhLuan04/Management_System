@@ -21,9 +21,12 @@ function renderLogin() {
   const router = createMemoryRouter(
     [
       { path: "/login", element: <LoginPage /> },
-      { path: "/", element: <p>Trang chủ</p> },
+      { path: "/dashboard", element: <p>Trang Tổng quan</p> },
+      { path: "/pos", element: <p>Trang Bán hàng</p> },
+      { path: "/settings", element: <p>Trang Cài đặt</p> },
     ],
-    { initialEntries: ["/login"] },
+    // Phiên trước hết hạn khi đang ở /settings: đăng nhập xong KHÔNG quay lại đó mà vào trang chủ theo vai trò
+    { initialEntries: [{ pathname: "/login", state: { from: { pathname: "/settings" } } }] },
   );
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -73,28 +76,33 @@ describe("LoginPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Thử lại sau 10:15 27/10/2026");
   });
 
-  it("goes to the home page after a successful login", async () => {
+  it.each([
+    ["ADMIN", "Quản trị viên", "Trang Tổng quan"],
+    ["MANAGER", "Quản lý cửa hàng", "Trang Tổng quan"],
+    ["CASHIER", "Thu ngân", "Trang Bán hàng"],
+  ] as const)("sends %s to their home page, not to the page open before login", async (code, roleName, home) => {
     vi.mocked(authApi.login).mockResolvedValue({
       access_token: "token",
       token_type: "bearer",
       expires_in: 900,
       user: {
         id: 1,
-        username: "admin",
-        full_name: "Quản trị viên",
+        username: "nguoidung",
+        full_name: "Người dùng",
         email: null,
         phone: null,
-        role: { id: 1, code: "ADMIN", name: "Quản trị viên" },
-        permissions: ["reports.view"],
+        role: { id: 1, code, name: roleName },
+        permissions: [],
         last_login_at: null,
       },
     });
     renderLogin();
 
-    await userEvent.type(screen.getByLabelText(/Tên đăng nhập/), "admin");
-    await userEvent.type(screen.getByLabelText(/Mật khẩu/), "Admin123");
+    await userEvent.type(screen.getByLabelText(/Tên đăng nhập/), "nguoidung");
+    await userEvent.type(screen.getByLabelText(/Mật khẩu/), "Admin@123");
     await userEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
 
-    expect(await screen.findByText("Trang chủ")).toBeInTheDocument();
+    expect(await screen.findByText(home)).toBeInTheDocument();
+    expect(screen.queryByText("Trang Cài đặt")).not.toBeInTheDocument();
   });
 });

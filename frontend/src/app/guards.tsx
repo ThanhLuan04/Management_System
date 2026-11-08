@@ -1,15 +1,15 @@
 import { ShieldX } from "lucide-react";
 import type { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router";
+import { Navigate } from "react-router";
 
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { P, type Permission } from "@/features/auth/permissions";
+import type { Permission } from "@/features/auth/permissions";
+import type { Me } from "@/types/api";
 
-/** Chưa đăng nhập → chuyển về /login, nhớ trang đang mở để quay lại sau khi đăng nhập. */
+/** Chưa đăng nhập → chuyển về /login; đăng nhập xong vào trang chủ theo vai trò (homePath). */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { status } = useAuth();
-  const location = useLocation();
 
   if (status === "loading") {
     return (
@@ -19,7 +19,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
   if (status === "anonymous") {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
 }
@@ -39,10 +39,12 @@ export function RequirePermission({ permission, children }: { permission: Permis
   return <>{children}</>;
 }
 
-/** Trang chủ theo vai trò: quản lý vào Tổng quan, thu ngân vào màn hình bán hàng. */
+/** Trang chủ theo vai trò: Thu ngân vào màn hình Bán hàng, mọi vai trò khác vào Tổng quan. */
+export function homePath(user: Pick<Me, "role">): string {
+  return user.role.code === "CASHIER" ? "/pos" : "/dashboard";
+}
+
 export function HomeRedirect() {
-  const { can } = useAuth();
-  if (can(P.REPORTS_VIEW)) return <Navigate to="/dashboard" replace />;
-  if (can(P.ORDERS_CREATE)) return <Navigate to="/pos" replace />;
-  return <Navigate to="/profile" replace />;
+  const { user } = useAuth();
+  return <Navigate to={user ? homePath(user) : "/login"} replace />;
 }
