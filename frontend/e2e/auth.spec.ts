@@ -41,7 +41,7 @@ test("phiên đăng nhập còn sau khi tải lại trang và mất hẳn sau kh
 });
 
 test("thu ngân không thấy và không dùng được chức năng quản trị", async ({ page, request }) => {
-  const cashier = { username: "e2e_thungan_quyen", password: "E2eCash123" };
+  const cashier = { username: "e2e_thungan_quyen", password: "E2e@Cash123" };
 
   // Tạo tài khoản thu ngân qua API bằng quyền Admin
   const auth = await request.post("/api/v1/auth/login", { data: ADMIN });

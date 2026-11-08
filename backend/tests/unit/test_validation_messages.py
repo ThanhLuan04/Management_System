@@ -36,5 +36,7 @@ def test_missing_field_and_custom_validator_messages():
     result = messages(UserCreate, username="abc", password="abcdefgh", full_name="A", email="x@")
 
     assert result["role_id"] == "Trường này là bắt buộc"
-    assert result["password"] == "Mật khẩu phải có cả chữ và số"  # không còn tiền tố "Value error, "
+    assert (
+        result["password"] == "Mật khẩu còn thiếu: chữ hoa, chữ số, ký tự đặc biệt"
+    )  # không còn tiền tố "Value error, "
     assert result["email"] == "Email không hợp lệ"

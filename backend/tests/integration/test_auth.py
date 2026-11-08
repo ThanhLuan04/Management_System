@@ -247,7 +247,7 @@ def test_change_password_requires_current_password(client, make_user):
     headers = bearer(login(client, "admin"))
 
     response = client.post(
-        CHANGE_PASSWORD, headers=headers, json={"current_password": "Sai12345", "new_password": "MoiMoi123"}
+        CHANGE_PASSWORD, headers=headers, json={"current_password": "Sai12345", "new_password": "MoiMoi@123"}
     )
 
     assert response.status_code == 422
@@ -277,12 +277,12 @@ def test_change_password_revokes_other_sessions(client, make_user, db):
     response = client.post(
         CHANGE_PASSWORD,
         headers=headers,
-        json={"current_password": DEFAULT_PASSWORD, "new_password": "MoiMoi123"},
+        json={"current_password": DEFAULT_PASSWORD, "new_password": "MoiMoi@123"},
     )
     assert response.status_code == 200
 
     assert login(client, "admin").status_code == 401
-    assert login(client, "admin", "MoiMoi123").status_code == 200
+    assert login(client, "admin", "MoiMoi@123").status_code == 200
 
     assert replay_refresh_token(client, other_device_cookie).status_code == 401
     assert reuse_detections(db) == 1

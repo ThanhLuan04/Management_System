@@ -26,10 +26,10 @@ def test_resets_password_and_unlocks_a_locked_admin(client, make_user, db, monke
     make_user("admin", RoleCode.ADMIN)
     lock_out(client, "admin")
 
-    assert run_script(monkeypatch, "ADMIN", "MatKhauMoi9", "MatKhauMoi9") == 0
+    assert run_script(monkeypatch, "ADMIN", "MatKhau@Moi9", "MatKhau@Moi9") == 0
 
     assert "mở khóa tài khoản 'admin'" in capsys.readouterr().out
-    assert login(client, "admin", "MatKhauMoi9").status_code == 200
+    assert login(client, "admin", "MatKhau@Moi9").status_code == 200
     assert login(client, "admin").json()["error"]["code"] == "INVALID_CREDENTIALS"  # mật khẩu cũ hết hiệu lực
     audit = db.scalar(select(AuditLog).where(AuditLog.action == "USER_RESET_PASSWORD"))
     assert (
@@ -40,7 +40,7 @@ def test_resets_password_and_unlocks_a_locked_admin(client, make_user, db, monke
 @pytest.mark.parametrize(
     ("passwords", "message"),
     [
-        (("MatKhauMoi9", "KhacNhau9"), "không khớp"),
+        (("MatKhau@Moi9", "KhacNhau@9"), "không khớp"),
         (("ngan1", "ngan1"), ""),  # vi phạm quy tắc mật khẩu → báo lỗi, không đổi
     ],
 )

@@ -55,9 +55,20 @@ def empty_to_none(value: Any) -> Any:
     return value
 
 
+# Kiểm tra theo Unicode: chữ có dấu (Đ, ê...) vẫn tính là chữ hoa/thường. Ký tự đặc biệt: không phải chữ, số, khoảng trắng.
+# Frontend dùng cùng quy tắc: frontend/src/features/users/passwordSchema.ts
+_PASSWORD_RULES = (
+    ("chữ hoa", lambda v: any(c.isupper() for c in v)),
+    ("chữ thường", lambda v: any(c.islower() for c in v)),
+    ("chữ số", lambda v: any(c.isdigit() for c in v)),
+    ("ký tự đặc biệt", lambda v: any(not c.isalnum() and not c.isspace() for c in v)),
+)
+
+
 def _check_password_strength(value: str) -> str:
-    if not re.search(r"[A-Za-z]", value) or not re.search(r"\d", value):
-        raise ValueError("Mật khẩu phải có cả chữ và số")
+    missing = [name for name, ok in _PASSWORD_RULES if not ok(value)]
+    if missing:
+        raise ValueError("Mật khẩu còn thiếu: " + ", ".join(missing))
     return value
 
 

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { FormField, Input } from "@/components/ui/Input";
-import { passwordSchema } from "@/features/users/passwordSchema";
+import { PASSWORD_HINT, passwordSchema } from "@/features/users/passwordSchema";
 import { toApiError } from "@/services/apiError";
 import { http } from "@/services/http";
 import type { Me, TokenResponse } from "@/types/api";
@@ -118,7 +118,7 @@ export function ChangePasswordForm() {
       <FormField label="Mật khẩu hiện tại" htmlFor="cp-current" required error={errors.current_password?.message}>
         <Input id="cp-current" type="password" autoComplete="current-password" invalid={!!errors.current_password} {...register("current_password")} />
       </FormField>
-      <FormField label="Mật khẩu mới" htmlFor="cp-new" required error={errors.new_password?.message} hint="≥ 8 ký tự, có chữ và số">
+      <FormField label="Mật khẩu mới" htmlFor="cp-new" required error={errors.new_password?.message} hint={PASSWORD_HINT}>
         <Input id="cp-new" type="password" autoComplete="new-password" invalid={!!errors.new_password} {...register("new_password")} />
       </FormField>
       <FormField label="Nhập lại mật khẩu mới" htmlFor="cp-confirm" required error={errors.confirm_password?.message}>

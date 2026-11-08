@@ -28,7 +28,7 @@ def main() -> int:
     parser.add_argument("--email", default=None)
     args = parser.parse_args()
 
-    password = getpass.getpass("Mật khẩu (≥ 8 ký tự, có chữ và số): ")
+    password = getpass.getpass("Mật khẩu (≥ 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt): ")
     if password != getpass.getpass("Nhập lại mật khẩu: "):
         print("Mật khẩu nhập lại không khớp.", file=sys.stderr)
         return 1

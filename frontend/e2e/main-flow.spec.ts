@@ -9,7 +9,7 @@ import { ADMIN, login, money, selectOptionContaining, toast } from "./support";
  *   tồn: 20 → 17 → 18; doanh thu thuần 30.000 ₫, giá vốn 2 × 10.000 = 20.000 ₫, lợi nhuận gộp 10.000 ₫
  */
 const PRODUCT = { sku: "E2E-TRA", barcode: "8930000000017", name: "Trà xanh E2E 500ml" };
-const CASHIER = { username: "e2e_thungan", password: "E2eCash123", fullName: "Thu ngân E2E" };
+const CASHIER = { username: "e2e_thungan", password: "E2e@Cash123", fullName: "Thu ngân E2E" };
 
 async function expectStock(page: Page, quantity: number) {
   await page.goto("/inventory");

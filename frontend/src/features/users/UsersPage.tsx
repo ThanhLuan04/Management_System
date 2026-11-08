@@ -22,7 +22,7 @@ import { toApiError } from "@/services/apiError";
 import { formatDateTime } from "@/utils/format";
 
 import { type UserRow, useCreateUser, useResetPassword, useRoles, useSetUserStatus, useUpdateUser, useUsers } from "./api";
-import { passwordSchema } from "./passwordSchema";
+import { PASSWORD_HINT, passwordSchema } from "./passwordSchema";
 
 const ROLE_VARIANTS = { ADMIN: "destructive", MANAGER: "info", CASHIER: "default" } as const;
 
@@ -129,7 +129,7 @@ function UserDialog({ open, onOpenChange, editing, isSelf }: { open: boolean; on
             <FormField label="Tên đăng nhập" htmlFor="u-username" required error={errors.username?.message}>
               <Input id="u-username" autoComplete="off" invalid={!!errors.username} {...register("username")} />
             </FormField>
-            <FormField label="Mật khẩu" htmlFor="u-password" required error={errors.password?.message} hint="≥ 8 ký tự, có chữ và số">
+            <FormField label="Mật khẩu" htmlFor="u-password" required error={errors.password?.message} hint={PASSWORD_HINT}>
               <Input id="u-password" type="password" autoComplete="new-password" invalid={!!errors.password} {...register("password")} />
             </FormField>
           </>
@@ -198,7 +198,7 @@ function ResetPasswordDialog({ user, onClose }: { user: UserRow | null; onClose:
         });
       }}
     >
-      <FormField label="Mật khẩu mới" htmlFor="reset-password" required error={error} hint="≥ 8 ký tự, có chữ và số">
+      <FormField label="Mật khẩu mới" htmlFor="reset-password" required error={error} hint={PASSWORD_HINT}>
         <Input id="reset-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} invalid={!!error} />
       </FormField>
     </ConfirmDialog>

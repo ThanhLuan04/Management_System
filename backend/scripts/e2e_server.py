@@ -20,7 +20,7 @@ from app.core.config import BACKEND_DIR, Settings, get_settings
 E2E_PORT = 8001
 E2E_FRONTEND_ORIGIN = "http://localhost:5174"
 # Chỉ dùng trên database test bị xóa sau mỗi lần chạy — Playwright dùng cùng giá trị (frontend/e2e/support.ts)
-E2E_ADMIN = {"username": "e2e_admin", "password": "E2eAdmin123", "full_name": "Admin E2E"}
+E2E_ADMIN = {"username": "e2e_admin", "password": "E2e@Admin123", "full_name": "Admin E2E"}
 
 
 def _use_test_database() -> None:

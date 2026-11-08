@@ -14,7 +14,7 @@ from tests.conftest import login
 
 FORGOT = "/api/v1/auth/forgot-password"
 RESET = "/api/v1/auth/reset-password"
-NEW_PASSWORD = "MatKhauMoi9"
+NEW_PASSWORD = "MatKhau@Moi9"
 
 
 @pytest.fixture
@@ -96,7 +96,7 @@ def test_code_is_single_use(client, admin, sent):
     code = sent[0]["code"]
     assert reset(client, code).status_code == 204
 
-    second = reset(client, code, password="MatKhauKhac8")
+    second = reset(client, code, password="MatKhau#Khac8")
     assert second.status_code == 400
     assert second.json()["error"]["code"] == "INVALID_RESET_CODE"
 

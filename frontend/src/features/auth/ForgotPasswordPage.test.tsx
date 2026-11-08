@@ -30,7 +30,7 @@ async function sendCode(email = "chu@example.com") {
   await screen.findByLabelText(/Mã xác nhận/);
 }
 
-async function fillReset(code: string, password = "MatKhauMoi9", confirm = password) {
+async function fillReset(code: string, password = "MatKhau@Moi9", confirm = password) {
   await userEvent.type(screen.getByLabelText(/Mã xác nhận/), code);
   await userEvent.type(screen.getByLabelText(/^Mật khẩu mới/), password);
   await userEvent.type(screen.getByLabelText(/Nhập lại mật khẩu mới/), confirm);
@@ -49,7 +49,7 @@ describe("ForgotPasswordPage", () => {
 
     await fillReset("123456");
 
-    expect(authApi.resetPassword).toHaveBeenCalledWith("Chu@Example.com", "123456", "MatKhauMoi9");
+    expect(authApi.resetPassword).toHaveBeenCalledWith("Chu@Example.com", "123456", "MatKhau@Moi9");
     expect(await screen.findByText("Trang đăng nhập")).toBeInTheDocument();
   });
 
@@ -57,7 +57,7 @@ describe("ForgotPasswordPage", () => {
     renderPage();
     await sendCode();
 
-    await fillReset("12ab", "MatKhauMoi9", "KhacNhau9");
+    await fillReset("12ab", "MatKhau@Moi9", "KhacNhau@9");
 
     expect(await screen.findByText("Mã gồm 6 chữ số")).toBeInTheDocument();
     expect(screen.getByText("Mật khẩu nhập lại không khớp")).toBeInTheDocument();

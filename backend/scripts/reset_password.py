@@ -34,7 +34,7 @@ def main() -> int:
             print(f"Không có tài khoản '{args.username}'.", file=sys.stderr)
             return 1
 
-        password = getpass.getpass("Mật khẩu mới (≥ 8 ký tự, có chữ và số): ")
+        password = getpass.getpass("Mật khẩu mới (≥ 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt): ")
         if password != getpass.getpass("Nhập lại mật khẩu mới: "):
             print("Mật khẩu nhập lại không khớp.", file=sys.stderr)
             return 1

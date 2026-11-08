@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 /** Tạo sẵn bởi backend/scripts/e2e_server.py trên database test (bị xóa mỗi lần chạy). */
-export const ADMIN = { username: "e2e_admin", password: "E2eAdmin123" };
+export const ADMIN = { username: "e2e_admin", password: "E2e@Admin123" };
 
 export async function login(page: Page, username: string, password: string) {
   await page.goto("/login");

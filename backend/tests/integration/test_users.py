@@ -9,7 +9,7 @@ USERS = "/api/v1/users"
 
 NEW_USER = {
     "username": "thungan01",
-    "password": "ThuNgan123",
+    "password": "ThuNgan@123",
     "full_name": "Lê Văn C",
     "email": "c@example.com",
     "phone": "0901234567",
@@ -44,11 +44,11 @@ def test_admin_creates_user_who_can_then_log_in(client, auth_headers, db):
     assert body["username"] == "thungan01"
     assert body["role"]["code"] == "CASHIER"
     assert "password" not in body and "password_hash" not in body
-    assert login(client, "thungan01", "ThuNgan123").status_code == 200
+    assert login(client, "thungan01", "ThuNgan@123").status_code == 200
 
     audit = db.scalar(select(AuditLog).where(AuditLog.action == "USER_CREATE"))
     assert audit.entity_id == body["id"]
-    assert "ThuNgan123" not in str(audit.new_values)
+    assert "ThuNgan@123" not in str(audit.new_values)
 
 
 @pytest.mark.parametrize(
@@ -165,11 +165,11 @@ def test_admin_resets_password_and_unlocks(client, auth_headers, make_user):
     assert login(client, "thungan").json()["error"]["code"] == "ACCOUNT_LOCKED"
 
     response = client.post(
-        f"{USERS}/{cashier.id}/reset-password", headers=headers, json={"new_password": "MatKhauMoi1"}
+        f"{USERS}/{cashier.id}/reset-password", headers=headers, json={"new_password": "MatKhau@Moi1"}
     )
 
     assert response.status_code == 204
-    assert login(client, "thungan", "MatKhauMoi1").status_code == 200
+    assert login(client, "thungan", "MatKhau@Moi1").status_code == 200
 
 
 def test_update_user_records_only_changed_fields(client, auth_headers, make_user, db):

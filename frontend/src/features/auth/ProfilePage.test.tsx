@@ -49,7 +49,7 @@ describe("ChangePasswordForm", () => {
 
     await fill("Demo@123", "abcdefgh", "abcdefgx");
 
-    expect(await screen.findByText("Mật khẩu phải có cả chữ và số")).toBeInTheDocument();
+    expect(await screen.findByText("Mật khẩu còn thiếu: chữ hoa, chữ số, ký tự đặc biệt")).toBeInTheDocument();
     expect(screen.getByText("Mật khẩu nhập lại không khớp")).toBeInTheDocument();
     expect(http.post).not.toHaveBeenCalled();
   });
@@ -57,10 +57,10 @@ describe("ChangePasswordForm", () => {
   it("keeps this device signed in with the new token returned by the server", async () => {
     renderForm();
 
-    await fill("Demo@123", "MatKhauMoi1", "MatKhauMoi1");
+    await fill("Demo@123", "MatKhau@Moi1", "MatKhau@Moi1");
 
     await vi.waitFor(() =>
-      expect(http.post).toHaveBeenCalledWith("/auth/change-password", { current_password: "Demo@123", new_password: "MatKhauMoi1" }),
+      expect(http.post).toHaveBeenCalledWith("/auth/change-password", { current_password: "Demo@123", new_password: "MatKhau@Moi1" }),
     );
     await vi.waitFor(() => expect(setAccessToken).toHaveBeenCalledWith("new-token"));
     expect(screen.getByLabelText(/Mật khẩu hiện tại/)).toHaveValue(""); // form được xóa sau khi đổi

@@ -235,7 +235,7 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 
 ### 7.8 Tài khoản
 
-- **BR-U01** Username duy nhất, 3–50 ký tự. Mật khẩu ≥ 8 ký tự, có cả chữ và số. Lưu bằng hash Argon2.
+- **BR-U01** Username duy nhất, 3–50 ký tự. Mật khẩu ≥ 8 ký tự, có chữ hoa, chữ thường, chữ số và ký tự đặc biệt (cập nhật sau MVP; mật khẩu đặt trước đó vẫn đăng nhập được, quy tắc áp dụng khi tạo/đổi/đặt lại mật khẩu). Lưu bằng hash Argon2.
 - **BR-U02** Đăng nhập sai 5 lần liên tiếp thì khóa tạm thời 15 phút. Ngoài ra có rate limit theo IP.
 - **BR-U03** Tài khoản bị khóa (`is_active = false`) không đăng nhập được, và các refresh token hiện có bị thu hồi.
 - **BR-U04** Admin không thể tự khóa hoặc tự hạ quyền chính mình. Hệ thống luôn còn ít nhất 1 Admin đang hoạt động.

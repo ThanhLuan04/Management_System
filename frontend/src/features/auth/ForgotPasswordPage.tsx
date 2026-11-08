@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/Button";
 import { FormField, Input } from "@/components/ui/Input";
-import { passwordSchema } from "@/features/users/passwordSchema";
+import { PASSWORD_HINT, passwordSchema } from "@/features/users/passwordSchema";
 import { toApiError } from "@/services/apiError";
 
 import { requestPasswordReset, resetPassword } from "./api";
@@ -138,7 +138,7 @@ function CodeStep({ email, message, onResend }: { email: string; message: string
           {...register("code")}
         />
       </FormField>
-      <FormField label="Mật khẩu mới" htmlFor="newPassword" required error={errors.newPassword?.message} hint="≥ 8 ký tự, có chữ và số">
+      <FormField label="Mật khẩu mới" htmlFor="newPassword" required error={errors.newPassword?.message} hint={PASSWORD_HINT}>
         <Input id="newPassword" type="password" autoComplete="new-password" invalid={!!errors.newPassword} {...register("newPassword")} />
       </FormField>
       <FormField label="Nhập lại mật khẩu mới" htmlFor="confirmPassword" required error={errors.confirmPassword?.message}>
