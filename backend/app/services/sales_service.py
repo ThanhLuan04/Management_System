@@ -58,7 +58,21 @@ def request_fingerprint(data: OrderCreate) -> str:
 
 
 def payment_method_of(order: SalesOrder) -> str | None:
-    return next((p.method for p in order.payments if p.type == "PAYMENT"), None)
+    """Phương thức khách đã trả; "MIXED" khi thanh toán kết hợp nhiều phương thức; None nếu đơn 0 ₫."""
+    methods = {p.method for p in order.payments if p.type == "PAYMENT"}
+    if not methods:
+        return None
+    return methods.pop() if len(methods) == 1 else "MIXED"
+
+
+def refundable_by_method(order: SalesOrder) -> dict[str, Decimal]:
+    """Số tiền còn hoàn được theo từng phương thức = đã thu − đã hoàn (chỉ phương thức còn > 0)."""
+    remaining: dict[str, Decimal] = {}
+    for p in order.payments:
+        remaining[p.method] = remaining.get(p.method, Decimal("0")) + (
+            p.amount if p.type == "PAYMENT" else -p.amount
+        )
+    return {method: amount for method, amount in remaining.items() if amount > 0}
 
 
 @dataclass(frozen=True)
@@ -261,6 +275,72 @@ def _replay(existing: SalesOrder, fingerprint: str, actor: User) -> SalesOrder:
     return existing
 
 
+def _payment_rows(data: OrderCreate, total: Decimal, actor_id: int) -> list[Payment]:
+    """
+    Kiểm tra và tạo các dòng thanh toán (chưa gắn đơn).
+    - `payment`: một phương thức, số tiền = tổng đơn.
+    - `payments`: kết hợp; tổng các khoản phải bằng đúng tổng đơn; tiền thừa chỉ tính trên khoản tiền mặt.
+    Đơn giảm 100% (tổng 0 ₫) không phát sinh dòng tiền.
+    """
+    if data.payment is not None:
+        p = data.payment
+        if p.method == PaymentMethod.CASH and p.cash_received < total:
+            raise AppError(
+                "INSUFFICIENT_PAYMENT",
+                "Tiền khách đưa chưa đủ",
+                422,
+                {"total_amount": str(total), "cash_received": str(p.cash_received)},
+            )
+        if total == 0:
+            return []
+        is_cash = p.method == PaymentMethod.CASH
+        return [
+            Payment(
+                type="PAYMENT",
+                method=p.method,
+                amount=total,
+                cash_received=p.cash_received if is_cash else None,
+                change_amount=p.cash_received - total if is_cash else None,
+                reference_note=p.reference_note,
+                created_by=actor_id,
+            )
+        ]
+
+    paid = sum((p.amount for p in data.payments), Decimal("0"))
+    if paid != total:
+        raise AppError(
+            "PAYMENT_MISMATCH",
+            f"Tổng các khoản thanh toán ({paid:,.0f} ₫) phải bằng số tiền khách cần trả ({total:,.0f} ₫)".replace(
+                ",", "."
+            ),
+            422,
+            {"total_amount": str(round_money(total)), "paid": str(round_money(paid))},
+        )
+    rows = []
+    for p in data.payments:
+        is_cash = p.method == PaymentMethod.CASH
+        received = (p.cash_received if p.cash_received is not None else p.amount) if is_cash else None
+        if is_cash and received < p.amount:
+            raise AppError(
+                "INSUFFICIENT_PAYMENT",
+                "Tiền khách đưa chưa đủ cho phần tiền mặt",
+                422,
+                {"cash_amount": str(p.amount), "cash_received": str(received)},
+            )
+        rows.append(
+            Payment(
+                type="PAYMENT",
+                method=p.method,
+                amount=p.amount,
+                cash_received=received,
+                change_amount=received - p.amount if is_cash else None,
+                reference_note=p.reference_note,
+                created_by=actor_id,
+            )
+        )
+    return rows
+
+
 def create_order(
     db: Session, data: OrderCreate, key: uuid.UUID, actor: User, ip: str | None
 ) -> tuple[SalesOrder, bool]:
@@ -307,14 +387,7 @@ def create_order(
             {"max_percent": max_percent},
         )
 
-    payment = data.payment
-    if payment.method == PaymentMethod.CASH and payment.cash_received < total:
-        raise AppError(
-            "INSUFFICIENT_PAYMENT",
-            "Tiền khách đưa chưa đủ",
-            422,
-            {"total_amount": str(total), "cash_received": str(payment.cash_received)},
-        )
+    payment_rows = _payment_rows(data, total, actor.id)
 
     # 3. Khóa tồn kho (thứ tự product_id tăng dần). Từ đây đến lúc commit, không ai khác bán được các sản phẩm này.
     inventories = inventory_ops.lock_inventory(db, product_ids)
@@ -372,19 +445,7 @@ def create_order(
                 unit_cost=inventories[product.id].avg_cost,
             )
         )
-    if total > 0:  # đơn giảm 100% không phát sinh dòng tiền
-        is_cash = payment.method == PaymentMethod.CASH
-        order.payments.append(
-            Payment(
-                type="PAYMENT",
-                method=payment.method,
-                amount=total,
-                cash_received=payment.cash_received if is_cash else None,
-                change_amount=payment.cash_received - total if is_cash else None,
-                reference_note=payment.reference_note,
-                created_by=actor.id,
-            )
-        )
+    order.payments.extend(payment_rows)
     db.add(order)
     try:
         db.flush()
@@ -478,11 +539,9 @@ def cancel_order(db: Session, order_id: int, reason: str, actor: User, ip: str |
             note=reason[:255],
         )
 
-    method = payment_method_of(order)
-    if order.total_amount > 0 and method is not None:
-        order.payments.append(
-            Payment(type="REFUND", method=method, amount=order.total_amount, created_by=actor.id)
-        )
+    # Hoàn lại từng khoản đúng phương thức khách đã trả (thanh toán kết hợp → nhiều dòng hoàn)
+    for method, amount in refundable_by_method(order).items():
+        order.payments.append(Payment(type="REFUND", method=method, amount=amount, created_by=actor.id))
 
     audit_service.record(
         db,

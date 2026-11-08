@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "@/services/apiError";
 import { http } from "@/services/http";
@@ -182,5 +182,100 @@ describe("PosPage", () => {
 
     expect(await screen.findByText("Bạn chỉ được giảm tối đa 10% giá trị đơn")).toBeInTheDocument();
     expect(orderCalls()).toHaveLength(0);
+  });
+});
+
+describe("PosPage — thanh toán kết hợp và chuyển khoản QR", () => {
+  const original = vi.mocked(http.get).getMockImplementation()!;
+  afterEach(() => vi.mocked(http.get).mockImplementation(original));
+
+  function withBankAccount() {
+    vi.mocked(http.get).mockImplementation(async (url: string, config?: unknown) =>
+      url === "/settings"
+        ? {
+            data: {
+              store_name: "SmartStore",
+              store_address: "",
+              store_phone: "",
+              return_window_days: 7,
+              my_max_discount_percent: "10",
+              bank_bin: "970436",
+              bank_account_number: "0011001234567",
+              bank_account_name: "NGUYEN VAN AN",
+            },
+          }
+        : original(url, config as never),
+    );
+  }
+
+  async function scanMilkTwice() {
+    const picker = screen.getByRole("combobox", { name: /Tìm sản phẩm để bán/ });
+    await userEvent.type(picker, "8930000000007{Enter}", { delay: null });
+    await userEvent.type(picker, "8930000000007{Enter}", { delay: null });
+    await screen.findByLabelText("Số lượng Sữa tươi 1L"); // 2 × 32.000 = 64.000
+  }
+
+  it("splits cash + transfer and fills the remainder with one click", async () => {
+    vi.mocked(http.post).mockImplementation(async () => ({ data: ORDER }));
+    renderPos();
+    await scanMilkTwice();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Kết hợp" }));
+    await userEvent.type(screen.getByLabelText("Tiền mặt"), "14000");
+    await userEvent.click(screen.getByRole("button", { name: "Điền phần còn lại vào Chuyển khoản" }));
+    await userEvent.click(screen.getByRole("button", { name: "Thanh toán (F9)" }));
+
+    await screen.findByText("Thanh toán thành công");
+    expect(orderCalls()[0][1]).toMatchObject({
+      payments: [
+        { method: "CASH", amount: "14000" },
+        { method: "BANK_TRANSFER", amount: "50000" },
+      ],
+    });
+    expect(orderCalls()[0][1]).not.toHaveProperty("payment");
+  });
+
+  it("blocks checkout when the split does not add up", async () => {
+    renderPos();
+    await scanMilkTwice();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Kết hợp" }));
+    await userEvent.type(screen.getByLabelText("Tiền mặt"), "14000");
+    await userEvent.click(screen.getByRole("button", { name: "Thanh toán (F9)" }));
+
+    expect(await screen.findByText(/Còn thiếu 50\.000/)).toBeInTheDocument();
+    expect(orderCalls()).toHaveLength(0);
+  });
+
+  it("shows a VietQR code and requires the cashier to confirm the money arrived", async () => {
+    withBankAccount();
+    vi.mocked(http.post).mockImplementation(async () => ({ data: ORDER }));
+    renderPos();
+    await scanMilkTwice();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Chuyển khoản" }));
+    expect(await screen.findByRole("img", { name: /Mã QR chuyển khoản 64\.000.*Vietcombank 0011001234567/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Thanh toán (F9)" }));
+    expect(await screen.findByText("Hãy xác nhận đã nhận tiền chuyển khoản trước khi thanh toán")).toBeInTheDocument();
+    expect(orderCalls()).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /Đã nhận đủ/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Thanh toán (F9)" }));
+
+    await screen.findByText("Thanh toán thành công");
+    expect(orderCalls()[0][1]).toMatchObject({ payment: { method: "BANK_TRANSFER", reference_note: expect.stringMatching(/^SS[0-9A-Z]{6}$/) } });
+  });
+
+  it("asks for confirmation again when the amount changes", async () => {
+    withBankAccount();
+    renderPos();
+    await scanMilkTwice();
+    await userEvent.click(screen.getByRole("radio", { name: "Chuyển khoản" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Đã nhận đủ/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Tăng Sữa tươi 1L" }));
+
+    expect(await screen.findByRole("checkbox", { name: /Đã nhận đủ 96\.000/ })).not.toBeChecked();
   });
 });

@@ -19,3 +19,11 @@ class SettingsUpdate(StrictModel):
     max_discount_percent_cashier: Percent | None = None
     max_discount_percent_manager: Percent | None = None
     return_window_days: Annotated[int, Field(ge=0, le=365)] | None = None
+    # Tài khoản nhận chuyển khoản (mã VietQR ở màn hình bán hàng). Chuỗi rỗng = xóa (không hiện QR).
+    bank_bin: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^(\d{6})?$")] | None = Field(
+        None, description="Mã BIN 6 số của ngân hàng theo NAPAS, vd. 970436 (Vietcombank)"
+    )
+    bank_account_number: (
+        Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^([0-9A-Za-z]{1,19})?$")] | None
+    ) = None
+    bank_account_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)] | None = None

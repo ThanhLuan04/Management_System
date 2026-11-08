@@ -140,6 +140,10 @@ class SettingsOut(BaseModel):
     store_address: str
     store_phone: str
     return_window_days: int
+    # Mọi vai trò đều thấy (thu ngân cần để hiện mã QR chuyển khoản); rỗng = chưa cấu hình
+    bank_bin: str = ""
+    bank_account_number: str = ""
+    bank_account_name: str = ""
     max_discount_percent_cashier: Decimal | None = None
     max_discount_percent_manager: Decimal | None = None
     my_max_discount_percent: Decimal | None = Field(

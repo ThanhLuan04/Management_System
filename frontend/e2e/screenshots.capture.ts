@@ -1,6 +1,6 @@
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
-import { login } from "./support";
+import { ADMIN, login } from "./support";
 
 /**
  * Chụp ảnh màn hình cho README trên dữ liệu demo (scripts/seed_demo.py, mật khẩu Demo@123).
@@ -76,4 +76,31 @@ test("chụp ảnh màn hình", async ({ browser, page }) => {
   await dark.goto("/reports");
   await dark.getByRole("radio", { name: "30 ngày" }).click();
   await shoot(dark, "12-reports-dark");
+
+  // VietQR: Admin điền tài khoản nhận tiền (có xem trước QR) → thu ngân thấy QR khi chọn chuyển khoản
+  const adminContext = await browser.newContext({ locale: "vi-VN", timezoneId: "Asia/Ho_Chi_Minh", viewport: { width: 1440, height: 900 } });
+  const admin = await adminContext.newPage();
+  await login(admin, ADMIN.username, ADMIN.password);
+  await admin.goto("/settings");
+  await admin.getByLabel("Ngân hàng").selectOption("970436");
+  await admin.getByLabel("Số tài khoản").fill("0011001234567");
+  await admin.getByLabel("Tên chủ tài khoản").fill("NGUYEN VAN AN");
+  await expect(admin.getByRole("img", { name: /Mã QR chuyển khoản/ })).toBeVisible();
+  await admin.getByRole("button", { name: "Lưu cài đặt" }).click();
+  await expect(admin.locator("[data-sonner-toast]")).toBeVisible();
+  await admin.getByRole("heading", { name: "Nhận chuyển khoản (VietQR)" }).scrollIntoViewIfNeeded();
+  await admin.screenshot({ path: `${OUT}/13-settings-vietqr.png` });
+
+  await cashier.reload();
+  for (const sku of ["COCA-330", "HEINEKEN-330", "LAVIE-500"]) {
+    await picker.fill(sku);
+    await picker.press("Enter");
+    await expect(picker).toHaveValue("");
+  }
+  await cashier.getByRole("radio", { name: "Kết hợp" }).click();
+  await cashier.getByLabel("Tiền mặt", { exact: true }).fill("7000");
+  await cashier.getByRole("button", { name: "Điền phần còn lại vào Chuyển khoản" }).click();
+  await expect(cashier.getByRole("img", { name: /Mã QR chuyển khoản/ })).toBeVisible();
+  await cashier.getByRole("img", { name: /Mã QR chuyển khoản/ }).scrollIntoViewIfNeeded();
+  await shoot(cashier, "14-pos-vietqr");
 });

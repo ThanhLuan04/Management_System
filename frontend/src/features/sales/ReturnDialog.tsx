@@ -8,8 +8,9 @@ import { Select } from "@/components/ui/Select";
 import { toApiError } from "@/services/apiError";
 import { formatMoney, formatNumber } from "@/utils/format";
 
-import { newIdempotencyKey, type Order, useCreateReturn } from "./api";
-import { estimateRefund } from "./refund";
+import { newIdempotencyKey, type Order, type PaymentMethod, useCreateReturn } from "./api";
+import { PAYMENT_METHOD_LABELS } from "./OrderStatusBadge";
+import { defaultRefundMethod, estimateRefund, refundableByMethod } from "./refund";
 
 type Condition = "RESELLABLE" | "DAMAGED";
 
@@ -21,6 +22,10 @@ export function ReturnDialog({ order, open, onOpenChange }: { order: Order; open
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const key = useRef(newIdempotencyKey());
+  // Đơn trả bằng nhiều phương thức → thu ngân chọn hoàn bằng phương thức nào trước
+  const remaining = refundableByMethod(order.payments);
+  const refundMethods = Object.keys(remaining) as PaymentMethod[];
+  const [refundMethod, setRefundMethod] = useState<PaymentMethod | undefined>(() => defaultRefundMethod(remaining));
 
   useEffect(() => {
     if (open) {
@@ -28,9 +33,10 @@ export function ReturnDialog({ order, open, onOpenChange }: { order: Order; open
       setConditions({});
       setReason("");
       setSubmitted(false);
+      setRefundMethod(defaultRefundMethod(refundableByMethod(order.payments)));
       key.current = newIdempotencyKey(); // mỗi lần mở hộp thoại là một phiếu trả mới
     }
-  }, [open]);
+  }, [open, order.payments]);
 
   const lines = returnable
     .map((item) => ({ item, quantity: Number(quantities[item.id] || 0), condition: conditions[item.id] ?? "RESELLABLE" }))
@@ -52,6 +58,7 @@ export function ReturnDialog({ order, open, onOpenChange }: { order: Order; open
         payload: {
           reason: reason.trim(),
           items: lines.map((l) => ({ order_item_id: l.item.id, quantity: l.quantity, condition: l.condition })),
+          ...(refundMethods.length > 1 && refundMethod ? { refund_method: refundMethod } : {}),
         },
       },
       {
@@ -131,6 +138,25 @@ export function ReturnDialog({ order, open, onOpenChange }: { order: Order; open
         <FormField label="Lý do trả hàng" htmlFor="return-reason" required error={submitted ? reasonError : undefined}>
           <Input id="return-reason" value={reason} maxLength={255} invalid={submitted && !!reasonError} onChange={(e) => setReason(e.target.value)} />
         </FormField>
+        {refundMethods.length > 1 && refundMethod && (
+          <FormField
+            label="Hoàn tiền bằng"
+            htmlFor="refund-method"
+            hint={
+              estimated > (remaining[refundMethod] ?? 0)
+                ? `Phần vượt ${formatMoney(estimated - (remaining[refundMethod] ?? 0))} sẽ hoàn bằng phương thức còn lại (khách đã trả kết hợp)`
+                : "Khách đã trả bằng nhiều phương thức — không hoàn quá số đã thu của từng phương thức"
+            }
+          >
+            <Select id="refund-method" value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as PaymentMethod)}>
+              {refundMethods.map((m) => (
+                <option key={m} value={m}>
+                  {PAYMENT_METHOD_LABELS[m]} (còn hoàn được {formatMoney(remaining[m] ?? 0)})
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        )}
         <p className="flex justify-between border-t border-border pt-3 text-sm">
           <span className="text-muted">Tiền hoàn dự kiến</span>
           <span className="tabular text-lg font-bold">{formatMoney(estimated)}</span>

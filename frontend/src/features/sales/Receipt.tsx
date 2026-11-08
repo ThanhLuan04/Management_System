@@ -10,7 +10,7 @@ import { PAYMENT_METHOD_LABELS } from "./OrderStatusBadge";
  * nên gọi window.print() là in đúng hóa đơn, không in cả giao diện quản lý.
  */
 export function PrintableReceipt({ order, store }: { order: Order; store?: StoreSettings }) {
-  const payment = order.payments.find((p) => p.type === "PAYMENT");
+  const payments = order.payments.filter((p) => p.type === "PAYMENT");
   return createPortal(
     <div className="print-root">
       <div className="receipt">
@@ -40,14 +40,15 @@ export function PrintableReceipt({ order, store }: { order: Order; store?: Store
           <p className="receipt-row"><span>Giảm giá</span><span>−{formatMoney(order.discount_amount)}</span></p>
         )}
         <p className="receipt-row receipt-strong"><span>TỔNG CỘNG</span><span>{formatMoney(order.total_amount)}</span></p>
-        {payment && (
-          <>
+        {/* Thanh toán kết hợp: mỗi khoản một dòng; tiền thừa chỉ có ở khoản tiền mặt */}
+        {payments.map((payment) => (
+          <div key={payment.id}>
             <p className="receipt-row"><span>{PAYMENT_METHOD_LABELS[payment.method]}</span><span>{formatMoney(payment.cash_received ?? payment.amount)}</span></p>
             {payment.change_amount !== null && Number(payment.change_amount) > 0 && (
               <p className="receipt-row"><span>Tiền thừa</span><span>{formatMoney(payment.change_amount)}</span></p>
             )}
-          </>
-        )}
+          </div>
+        ))}
         {order.status === "CANCELLED" && <p className="receipt-center receipt-strong">— ĐƠN ĐÃ HỦY —</p>}
         <hr />
         <p className="receipt-center">Cảm ơn quý khách!</p>

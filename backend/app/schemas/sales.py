@@ -64,13 +64,35 @@ class PaymentIn(StrictModel):
         return self
 
 
+class SplitPaymentIn(StrictModel):
+    """Một khoản trong thanh toán kết hợp: số tiền phải ghi rõ (tổng các khoản = tổng đơn, backend kiểm tra)."""
+
+    method: Literal["CASH", "BANK_TRANSFER", "CARD"]
+    amount: Annotated[WholeDong, Field(gt=0)]
+    cash_received: WholeDong | None = Field(
+        None, description="Chỉ cho tiền mặt; bỏ trống = đưa vừa đủ phần tiền mặt (không thối)"
+    )
+    reference_note: Annotated[
+        Annotated[str, StringConstraints(max_length=100)] | None, BeforeValidator(empty_to_none)
+    ] = Field(None, description="Nội dung chuyển khoản / mã giao dịch thẻ")
+
+    @model_validator(mode="after")
+    def cash_fields(self) -> "SplitPaymentIn":
+        if self.method != "CASH" and self.cash_received is not None:
+            raise ValueError("Chỉ nhập cash_received cho khoản tiền mặt")
+        return self
+
+
 class OrderCreate(StrictModel):
     """Không có trường giá / tổng tiền nào: backend tự tính lại toàn bộ (gửi lên sẽ bị từ chối)."""
 
     customer_id: int | None = Field(None, description="Bỏ trống = khách lẻ")
     items: Annotated[list[OrderItemIn], Field(min_length=1, max_length=100)]
     discount: DiscountIn | None = None
-    payment: PaymentIn
+    # Một phương thức: dùng `payment` (số tiền = tổng đơn do backend tính).
+    # Kết hợp 2–3 phương thức: dùng `payments`, mỗi khoản ghi số tiền, mỗi phương thức tối đa một khoản.
+    payment: PaymentIn | None = None
+    payments: Annotated[list[SplitPaymentIn], Field(min_length=2, max_length=3)] | None = None
     note: Annotated[
         Annotated[str, StringConstraints(max_length=500)] | None, BeforeValidator(empty_to_none)
     ] = None
@@ -81,6 +103,19 @@ class OrderCreate(StrictModel):
         if len({item.product_id for item in items}) != len(items):
             raise ValueError("Mỗi sản phẩm chỉ xuất hiện một dòng trong đơn (hãy tăng số lượng)")
         return items
+
+    @field_validator("payments")
+    @classmethod
+    def unique_methods(cls, payments: list[SplitPaymentIn] | None) -> list[SplitPaymentIn] | None:
+        if payments and len({p.method for p in payments}) != len(payments):
+            raise ValueError("Mỗi phương thức thanh toán chỉ xuất hiện một lần")
+        return payments
+
+    @model_validator(mode="after")
+    def one_payment_form(self) -> "OrderCreate":
+        if (self.payment is None) == (self.payments is None):
+            raise ValueError("Gửi đúng một trong hai: payment (một phương thức) hoặc payments (kết hợp)")
+        return self
 
 
 class CustomerRef(BaseModel):
@@ -183,6 +218,11 @@ class ReturnCreate(StrictModel):
 
     reason: Reason
     items: Annotated[list[ReturnItemIn], Field(min_length=1, max_length=100)]
+    refund_method: Literal["CASH", "BANK_TRANSFER", "CARD"] | None = Field(
+        None,
+        description="Phương thức hoàn (một trong các phương thức khách đã trả). Bỏ trống: đơn một phương thức → "
+        "phương thức đó; thanh toán kết hợp → tiền mặt nếu có",
+    )
 
     @field_validator("items")
     @classmethod

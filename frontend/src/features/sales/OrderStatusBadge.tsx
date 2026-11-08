@@ -14,4 +14,5 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CASH: "Tiền mặt",
   BANK_TRANSFER: "Chuyển khoản",
   CARD: "Thẻ",
+  MIXED: "Kết hợp", // thanh toán / hoàn tiền bằng nhiều phương thức
 };

@@ -49,11 +49,21 @@ export interface Order extends OrderSummary {
   gross_profit?: Money;
 }
 
+export interface SplitPayment {
+  method: PaymentMethod;
+  amount: string;
+  cash_received?: string;
+  reference_note?: string | null;
+}
+
 export interface OrderPayload {
   customer_id: number | null;
   items: { product_id: number; quantity: number }[];
   discount: { type: "AMOUNT" | "PERCENT"; value: string } | null;
-  payment: { method: PaymentMethod; cash_received?: string; reference_note?: string | null };
+  /** Một phương thức (số tiền = tổng đơn do máy chủ tính) — gửi đúng một trong `payment` / `payments` */
+  payment?: { method: PaymentMethod; cash_received?: string; reference_note?: string | null };
+  /** Thanh toán kết hợp 2–3 phương thức: tổng các khoản phải bằng tổng đơn */
+  payments?: SplitPayment[];
   note: string | null;
 }
 
@@ -64,7 +74,7 @@ export interface ReturnSummary {
   customer: OrderSummary["customer"];
   reason: string;
   total_refund: Money;
-  refund_method: PaymentMethod | null;
+  refund_method: PaymentMethod | "MIXED" | null; // MIXED: phiếu trả hoàn bằng nhiều phương thức
   item_count: number;
   created_by: UserRef;
   created_at: string;
@@ -87,6 +97,8 @@ export interface ReturnDetail extends ReturnSummary {
 export interface ReturnPayload {
   reason: string;
   items: { order_item_id: number; quantity: number; condition: "RESELLABLE" | "DAMAGED" }[];
+  /** Hoàn bằng phương thức nào trước (phần vượt số đã thu bằng phương thức đó hoàn bằng phương thức khác) */
+  refund_method?: PaymentMethod;
 }
 
 export interface StoreSettings {
@@ -94,6 +106,10 @@ export interface StoreSettings {
   store_address: string;
   store_phone: string;
   return_window_days: number;
+  /** Tài khoản nhận chuyển khoản (VietQR); rỗng = chưa cấu hình */
+  bank_bin: string;
+  bank_account_number: string;
+  bank_account_name: string;
   my_max_discount_percent: Money | null;
 }
 

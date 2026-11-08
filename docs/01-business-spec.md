@@ -192,7 +192,7 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-S03** Không bán vượt tồn. Không bán sản phẩm ngừng kinh doanh. Mỗi sản phẩm xuất hiện tối đa 1 dòng trong đơn.
 - **BR-S04** Giảm giá ở cấp đơn, kiểu `AMOUNT` (số tiền) hoặc `PERCENT`. `discount_amount ≤ subtotal`, và tỷ lệ giảm ≤ giới hạn của vai trò.
 - **BR-S05** Phân bổ giảm giá vào từng dòng theo tỷ lệ thành tiền, làm tròn đến đồng. Phần dư do làm tròn dồn vào dòng có thành tiền lớn nhất, để tổng phân bổ luôn đúng bằng `discount_amount`.
-- **BR-S06** Phương thức: `CASH`, `BANK_TRANSFER`, `CARD`. Chuyển khoản và thẻ **chỉ ghi nhận thủ công**, không kết nối ngân hàng. Tiền mặt: `tiền_khách_đưa ≥ total`, `tiền_thừa = tiền_khách_đưa − total`. MVP mỗi đơn dùng 1 phương thức.
+- **BR-S06** Phương thức: `CASH`, `BANK_TRANSFER`, `CARD`. Chuyển khoản và thẻ **chỉ ghi nhận thủ công**, không kết nối ngân hàng. Tiền mặt: `tiền_khách_đưa ≥ total`, `tiền_thừa = tiền_khách_đưa − total`. *(Bổ sung sau MVP)* Thanh toán kết hợp: một đơn chia 2–3 khoản, mỗi phương thức tối đa một khoản, tổng các khoản = total, tiền thừa chỉ tính trên khoản tiền mặt. Chuyển khoản có thể hiện mã VietQR (tài khoản nhận trong Cài đặt, mã tạo trên máy, có sẵn số tiền + mã đối soát `SSxxxxxx`); thu ngân xác nhận tay đã nhận tiền rồi mới tạo đơn.
 - **BR-S07** Mã đơn duy nhất dạng `HD{yyyyMMdd}-{0001}`. Phiếu nhập dùng `PN…`, phiếu trả `TH…`, phiếu điều chỉnh `DC…`, khách hàng `KH000001`, nhà cung cấp `NCC0001`.
 - **BR-S08** Mỗi request tạo đơn có `Idempotency-Key` (UUID). Gửi lại cùng key thì nhận lại đơn đã tạo, không tạo đơn mới.
 
@@ -207,7 +207,7 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-R02** Với mỗi dòng: `SL trả ≤ SL bán − tổng SL đã trả trước đó`.
 - **BR-R03** Tiền hoàn mỗi dòng = `round(line_total × SL_trả / SL_bán)`. Nếu lần trả này trả hết phần còn lại của dòng, tiền hoàn = `line_total − tiền đã hoàn trước đó` để không lệch do làm tròn.
 - **BR-R04** Tình trạng hàng `RESELLABLE` thì cộng lại kho, `DAMAGED` thì không cộng.
-- **BR-R05** Hoàn tiền bằng cùng phương thức của đơn gốc (MVP). Lý do trả bắt buộc.
+- **BR-R05** Hoàn tiền bằng phương thức khách đã trả. Đơn trả kết hợp: thu ngân chọn phương thức hoàn trước (mặc định tiền mặt), phần vượt số tiền còn lại đã thu bằng phương thức đó tự hoàn bằng phương thức khác — không phương thức nào hoàn quá số đã thu. Hủy đơn hoàn từng khoản đúng phương thức. Lý do trả bắt buộc.
 - **BR-R06** Trả hết mọi dòng thì đơn có `return_status = FULL`. Giá trị này được **tính từ dữ liệu**, không lưu trùng.
 
 ### 7.6 Tồn kho
@@ -287,7 +287,7 @@ Mọi lỗi trả về cùng định dạng:
 - Hủy phiếu nhập đã xác nhận
 - Giảm giá theo dòng, chương trình khuyến mãi
 - Tích điểm khách hàng
-- Thanh toán kết hợp nhiều phương thức
+- ~~Thanh toán kết hợp nhiều phương thức~~ — đã làm sau MVP (kèm mã VietQR, xem BR-S06)
 - Bán theo đơn vị lẻ (kg, m)
 - Lưu ảnh trên cloud
 - Đa chi nhánh / đa kho. Thiết kế đã chừa chỗ: sau này chỉ cần thêm `warehouse_id` vào `inventory` và `inventory_transactions`.

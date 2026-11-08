@@ -16,6 +16,10 @@ DEFAULTS: dict[str, Any] = {
     "max_discount_percent_cashier": 10,
     "max_discount_percent_manager": 30,
     "return_window_days": 7,
+    # Tài khoản nhận chuyển khoản qua VietQR (thêm sau MVP — chưa lưu thì dùng giá trị rỗng ở đây)
+    "bank_bin": "",
+    "bank_account_number": "",
+    "bank_account_name": "",
 }
 
 
@@ -27,7 +31,15 @@ def get_value(db: Session, key: str) -> Any:
 def settings_out(db: Session, role_code: str, can_manage: bool) -> SettingsOut:
     data = {
         key: get_value(db, key)
-        for key in ("store_name", "store_address", "store_phone", "return_window_days")
+        for key in (
+            "store_name",
+            "store_address",
+            "store_phone",
+            "return_window_days",
+            "bank_bin",
+            "bank_account_number",
+            "bank_account_name",
+        )
     }
     if can_manage or role_code == RoleCode.MANAGER:
         data["max_discount_percent_cashier"] = Decimal(str(get_value(db, "max_discount_percent_cashier")))

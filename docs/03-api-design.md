@@ -153,7 +153,7 @@ Quên mật khẩu Admin khi chưa có email: chạy `python -m scripts.reset_pa
 | Method | URL | Mô tả | Quyền |
 |---|---|---|---|
 | GET | `/orders` | Danh sách (`q` theo mã/SĐT khách, `status`, `customer_id`, `created_by`, `payment_method`, `date_from`, `date_to`) | A M C |
-| POST | `/orders` | Tạo đơn + thanh toán (bắt buộc Idempotency-Key) | A M C |
+| POST | `/orders` | Tạo đơn + thanh toán (bắt buộc Idempotency-Key). Một phương thức: `payment {method, cash_received?, reference_note?}`; kết hợp: `payments [{method, amount, cash_received?, reference_note?}]` (2–3 khoản, tổng = tổng đơn, sai → `PAYMENT_MISMATCH`) | A M C |
 | GET | `/orders/{id}` | Chi tiết: dòng hàng, thanh toán, phiếu trả, SL còn trả được | A M C |
 | POST | `/orders/{id}/cancel` | Hủy đơn | A M |
 | POST | `/orders/{id}/returns` | Tạo phiếu trả (bắt buộc Idempotency-Key) | A M C |

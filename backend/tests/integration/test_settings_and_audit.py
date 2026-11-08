@@ -31,6 +31,33 @@ def test_admin_reads_and_updates_settings(client, admin):
     assert client.get(SETTINGS, headers=admin).json()["store_name"] == "Tạp hóa Minh Anh"
 
 
+def test_bank_account_for_vietqr_is_saved_by_admin_and_visible_to_cashier(client, admin, auth_headers):
+    bank = {"bank_bin": "970436", "bank_account_number": "0123456789", "bank_account_name": "NGUYEN VAN AN"}
+    assert client.patch(SETTINGS, headers=admin, json=bank).status_code == 200
+
+    cashier = auth_headers(RoleCode.CASHIER, username="thungan")
+    body = client.get(SETTINGS, headers=cashier).json()
+    assert {key: body[key] for key in bank} == bank
+    assert client.patch(SETTINGS, headers=cashier, json={"bank_bin": "970415"}).status_code == 403
+
+    # Chuỗi rỗng = xóa cấu hình (màn hình bán hàng không hiện QR nữa)
+    assert client.patch(SETTINGS, headers=admin, json={"bank_bin": ""}).status_code == 200
+    assert client.get(SETTINGS, headers=admin).json()["bank_bin"] == ""
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"bank_bin": "97043"},
+        {"bank_bin": "ABCDEF"},
+        {"bank_account_number": "0123-456"},
+        {"bank_account_name": "A" * 51},
+    ],
+)
+def test_bank_account_fields_are_validated(client, admin, change):
+    assert client.patch(SETTINGS, headers=admin, json=change).status_code == 422
+
+
 def test_cashier_sees_only_store_info_and_own_limit(client, auth_headers):
     cashier = auth_headers(RoleCode.CASHIER, username="thungan")
 
@@ -41,6 +68,10 @@ def test_cashier_sees_only_store_info_and_own_limit(client, auth_headers):
         "store_address": "",
         "store_phone": "",
         "return_window_days": 7,
+        # Thu ngân cần tài khoản nhận tiền để hiện mã QR chuyển khoản
+        "bank_bin": "",
+        "bank_account_number": "",
+        "bank_account_name": "",
         "my_max_discount_percent": "10",
     }
 

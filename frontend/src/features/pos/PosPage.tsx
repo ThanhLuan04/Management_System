@@ -12,7 +12,7 @@ import type { Product } from "@/features/catalog/api";
 import { ProductThumb } from "@/features/catalog/components";
 import { ProductPicker } from "@/features/catalog/ProductPicker";
 import type { Customer } from "@/features/partners/api";
-import { newIdempotencyKey, type Order, type PaymentMethod, useCreateOrder, useMySales, useStoreSettings } from "@/features/sales/api";
+import { newIdempotencyKey, type Order, useCreateOrder, useMySales, useStoreSettings } from "@/features/sales/api";
 import { PAYMENT_METHOD_LABELS } from "@/features/sales/OrderStatusBadge";
 import { PrintableReceipt } from "@/features/sales/Receipt";
 import { toApiError } from "@/services/apiError";
@@ -21,9 +21,12 @@ import { formatMoney, formatNumber, toNumber } from "@/utils/format";
 
 import { addToCart, type CartLine, cartTotals, cashSuggestions, type Discount, lineSubtotal, setQuantity } from "./cart";
 import { CustomerSelect } from "./CustomerSelect";
+import { buildPayment, emptySplit, type PayMode, type PaymentErrors, SPLIT_METHODS, splitTotal } from "./payment";
 import { ProductGrid } from "./ProductGrid";
+import { TransferQr } from "./TransferQr";
+import { transferReference } from "./vietqr";
 
-const METHODS: PaymentMethod[] = ["CASH", "BANK_TRANSFER", "CARD"];
+const METHODS: PayMode[] = ["CASH", "BANK_TRANSFER", "CARD", "MIXED"];
 
 function MySalesDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { data, isPending } = useMySales(open);
@@ -56,11 +59,13 @@ export function PosPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [discount, setDiscount] = useState<Discount>({ type: "PERCENT", value: "" });
-  const [method, setMethod] = useState<PaymentMethod>("CASH");
+  const [method, setMethod] = useState<PayMode>("CASH");
   const [cash, setCash] = useState("");
   const [referenceNote, setReferenceNote] = useState("");
+  const [split, setSplit] = useState(emptySplit);
+  const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [note, setNote] = useState("");
-  const [errors, setErrors] = useState<{ discount?: string; cash?: string }>({});
+  const [errors, setErrors] = useState<{ discount?: string } & PaymentErrors>({});
   // product_id → số còn trong kho theo server (khi server báo hết hàng)
   const [shortages, setShortages] = useState<Record<number, number>>({});
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
@@ -76,6 +81,15 @@ export function PosPage() {
   const cashValue = toNumber(cash);
   const change = method === "CASH" && cash !== "" ? cashValue - totals.total : null;
 
+  // Có tài khoản nhận tiền trong Cài đặt → hiện mã VietQR; mã đối soát cố định theo giỏ hàng (đổi khi sang giỏ mới)
+  const bank = store.data;
+  const qrEnabled = !!bank?.bank_bin && !!bank.bank_account_number;
+  const transferRef = qrEnabled ? transferReference(idempotencyKey.current) : null;
+  const transferAmount = method === "BANK_TRANSFER" ? totals.total : method === "MIXED" ? toNumber(split.BANK_TRANSFER || 0) : 0;
+
+  // Số tiền cần chuyển thay đổi (sửa giỏ, đổi cách trả, chia lại) → phải xác nhận lại đã nhận đúng số tiền mới
+  useEffect(() => setTransferConfirmed(false), [transferAmount, method]);
+
   const resetCart = useCallback(() => {
     setCart([]);
     setCustomer(null);
@@ -83,6 +97,8 @@ export function PosPage() {
     setMethod("CASH");
     setCash("");
     setReferenceNote("");
+    setSplit(emptySplit());
+    setTransferConfirmed(false);
     setNote("");
     setErrors({});
     setShortages({});
@@ -103,11 +119,14 @@ export function PosPage() {
     if (maxPercent !== null && totals.discountPercent > maxPercent + 1e-9) {
       nextErrors.discount = `Bạn chỉ được giảm tối đa ${maxPercent}% giá trị đơn`;
     }
-    if (method === "CASH" && (cash === "" || cashValue < totals.total)) {
-      nextErrors.cash = cash === "" ? "Nhập số tiền khách đưa" : "Tiền khách đưa chưa đủ";
-    }
+    const payment = buildPayment(
+      { mode: method, cash, reference: referenceNote, split, transferConfirmed },
+      totals.total,
+      transferRef,
+    );
+    if (!payment.ok) Object.assign(nextErrors, payment.errors);
     setErrors(nextErrors);
-    if (cart.length === 0 || Object.keys(nextErrors).length > 0 || createOrder.isPending) return;
+    if (cart.length === 0 || !payment.ok || Object.keys(nextErrors).length > 0 || createOrder.isPending) return;
 
     createOrder.mutate(
       {
@@ -116,10 +135,7 @@ export function PosPage() {
           customer_id: customer?.id ?? null,
           items: cart.map((l) => ({ product_id: l.product.id, quantity: l.quantity })),
           discount: totals.discount > 0 ? { type: discount.type, value: discount.value } : null,
-          payment:
-            method === "CASH"
-              ? { method, cash_received: cash }
-              : { method, reference_note: referenceNote.trim() || null },
+          ...payment.payload,
           note: note.trim() || null,
         },
       },
@@ -141,7 +157,11 @@ export function PosPage() {
               setErrors((e) => ({ ...e, discount: apiError.message }));
               break;
             case "INSUFFICIENT_PAYMENT":
-              setErrors((e) => ({ ...e, cash: apiError.message }));
+              setErrors((e) => (method === "MIXED" ? { ...e, split: apiError.message } : { ...e, cash: apiError.message }));
+              break;
+            case "PAYMENT_MISMATCH":
+              // Giá trên máy chủ khác lúc thêm vào giỏ (vừa đổi giá) → tổng mới khác số đã chia
+              setErrors((e) => ({ ...e, split: apiError.message }));
               break;
             case "IDEMPOTENCY_CONFLICT":
               // Lần gửi trước (cùng key) đã tạo đơn nhưng phản hồi bị mất, sau đó giỏ hàng bị sửa
@@ -310,7 +330,7 @@ export function PosPage() {
                   </div>
                 </FormField>
 
-                <div role="radiogroup" aria-label="Phương thức thanh toán" className="grid grid-cols-3 gap-2">
+                <div role="radiogroup" aria-label="Phương thức thanh toán" className="grid grid-cols-2 gap-2">
                   {METHODS.map((m) => (
                     <button
                       key={m}
@@ -325,7 +345,7 @@ export function PosPage() {
                   ))}
                 </div>
 
-                {method === "CASH" ? (
+                {method === "CASH" && (
                   <>
                     <FormField label="Khách đưa" htmlFor="cash" error={errors.cash}>
                       <MoneyInput id="cash" value={cash} onChange={setCash} invalid={!!errors.cash} />
@@ -344,8 +364,71 @@ export function PosPage() {
                       </span>
                     </div>
                   </>
-                ) : (
-                  <FormField label="Mã giao dịch (tùy chọn)" htmlFor="reference" hint="Hệ thống chỉ ghi nhận, không kết nối ngân hàng">
+                )}
+
+                {method === "MIXED" && (
+                  <div className="space-y-2" role="group" aria-label="Chia tiền theo phương thức">
+                    {SPLIT_METHODS.map((m) => {
+                      const others = splitTotal(split) - toNumber(split[m] || 0);
+                      return (
+                        <div key={m} className="flex items-center gap-2">
+                          <label htmlFor={`split-${m}`} className="w-24 shrink-0 text-sm">
+                            {PAYMENT_METHOD_LABELS[m]}
+                          </label>
+                          <div className="flex-1">
+                            <MoneyInput id={`split-${m}`} value={split[m]} onChange={(v) => setSplit((s) => ({ ...s, [m]: v }))} invalid={!!errors.split} />
+                          </div>
+                          <Button variant="ghost" size="sm" title="Điền phần còn lại" aria-label={`Điền phần còn lại vào ${PAYMENT_METHOD_LABELS[m]}`} onClick={() => setSplit((s) => ({ ...s, [m]: String(Math.max(0, totals.total - others)) }))}>
+                            Còn lại
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    <p className={cn("flex justify-between text-sm", errors.split ? "text-destructive" : "text-muted")} role={errors.split ? "alert" : undefined}>
+                      <span>{errors.split ?? "Đã chia"}</span>
+                      <span className="tabular">
+                        {formatMoney(splitTotal(split))} / {formatMoney(totals.total)}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Chuyển khoản (riêng hoặc trong kết hợp): mã VietQR + thu ngân xác nhận đã nhận tiền */}
+                {(method === "BANK_TRANSFER" || method === "MIXED") && qrEnabled && bank && transferRef && transferAmount > 0 && (
+                  <div className="space-y-2">
+                    <TransferQr
+                      bankBin={bank.bank_bin}
+                      accountNumber={bank.bank_account_number}
+                      accountName={bank.bank_account_name}
+                      amount={transferAmount}
+                      note={transferRef}
+                      size={180}
+                    />
+                    <label className={cn("flex items-start gap-2 rounded-md border p-2 text-sm", errors.transfer ? "border-destructive bg-destructive-soft" : "border-border")}>
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                        checked={transferConfirmed}
+                        onChange={(e) => setTransferConfirmed(e.target.checked)}
+                      />
+                      <span>
+                        Đã nhận đủ <strong className="tabular">{formatMoney(transferAmount)}</strong> — kiểm tra thông báo ngân hàng có nội dung <strong>{transferRef}</strong>
+                      </span>
+                    </label>
+                    {errors.transfer && (
+                      <p role="alert" className="text-xs text-destructive">
+                        {errors.transfer}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {((method === "BANK_TRANSFER" && !qrEnabled) || method === "CARD") && (
+                  <FormField
+                    label="Mã giao dịch (tùy chọn)"
+                    htmlFor="reference"
+                    hint={method === "BANK_TRANSFER" ? "Chưa có tài khoản nhận tiền — Admin điền trong Cài đặt để hiện mã QR" : "Hệ thống chỉ ghi nhận, không kết nối ngân hàng"}
+                  >
                     <Input id="reference" value={referenceNote} maxLength={100} onChange={(e) => setReferenceNote(e.target.value)} />
                   </FormField>
                 )}

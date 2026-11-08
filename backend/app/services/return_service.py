@@ -30,7 +30,7 @@ from app.models import (
 from app.schemas.sales import ReturnCreate, ReturnItemOut, ReturnOut, ReturnSummaryOut
 from app.services import audit_service, code_gen, inventory_ops, settings_service
 from app.services.pricing import line_refund
-from app.services.sales_service import Returned, lock_order, payment_method_of, returned_by_item
+from app.services.sales_service import Returned, lock_order, refundable_by_method, returned_by_item
 from app.utils.pagination import paginate
 from app.utils.time import vn_date_of, vn_day_range, vn_today
 
@@ -44,7 +44,11 @@ def _fingerprint(data: ReturnCreate) -> str:
 
 
 def _refund_method(sales_return: SalesReturn) -> str | None:
-    return next((p.method for p in sales_return.refunds), None)
+    """Phương thức hoàn; "MIXED" khi một phiếu trả hoàn bằng nhiều phương thức."""
+    methods = {p.method for p in sales_return.refunds}
+    if not methods:
+        return None
+    return methods.pop() if len(methods) == 1 else "MIXED"
 
 
 def to_summary(sales_return: SalesReturn) -> ReturnSummaryOut:
@@ -149,6 +153,43 @@ def _replay(existing: SalesReturn, order_id: int, fingerprint: str, actor: User)
     return existing
 
 
+_METHOD_LABELS = {"CASH": "tiền mặt", "BANK_TRANSFER": "chuyển khoản", "CARD": "thẻ"}
+
+
+def _allocate_refund(
+    order: SalesOrder, requested: str | None, total_refund: Decimal
+) -> list[tuple[str, Decimal]]:
+    """
+    Chia tiền hoàn theo phương thức, không phương thức nào hoàn quá số tiền còn lại đã thu bằng phương thức đó:
+    phương thức được chọn trước (không chọn → tiền mặt nếu có), phần vượt hoàn bằng phương thức khác
+    (tiền mặt trước, rồi khoản còn nhiều nhất). Nhờ vậy trả hàng không bao giờ bị kẹt vì một khoản đã cạn.
+    """
+    remaining = refundable_by_method(order)
+    if total_refund == 0 or not remaining:
+        return []
+    if requested is not None and requested not in remaining:
+        raise AppError(
+            "REFUND_METHOD_INVALID",
+            f"Đơn này không còn khoản {_METHOD_LABELS.get(requested, requested)} để hoàn tiền",
+            422,
+            {"available": {method: str(amount) for method, amount in remaining.items()}},
+        )
+    first = requested or ("CASH" if "CASH" in remaining else None)
+    others = sorted((m for m in remaining if m != first), key=lambda m: (m != "CASH", -remaining[m]))
+    order_of_methods = ([first] if first else []) + others
+
+    allocation, left = [], total_refund
+    for method in order_of_methods:
+        amount = min(left, remaining[method])
+        if amount > 0:
+            allocation.append((method, amount))
+            left -= amount
+    # Tiền hoàn tính theo giá các dòng đơn gốc nên không thể vượt tổng đã thu; kiểm tra để phát hiện sai lệch dữ liệu
+    if left > 0:
+        raise AppError("REFUND_EXCEEDS_PAID", "Số tiền hoàn vượt quá số tiền khách đã trả", 409)
+    return allocation
+
+
 def create_return(
     db: Session, order_id: int, data: ReturnCreate, key: uuid.UUID, actor: User, ip: str | None
 ) -> tuple[SalesReturn, bool]:
@@ -208,6 +249,7 @@ def create_return(
         )
 
     total_refund = sum((refund for _, _, refund in planned), Decimal("0"))
+    refunds = _allocate_refund(order, data.refund_method, total_refund)
     sales_return = SalesReturn(
         code=code_gen.document_code(db, "TH", vn_today()),
         idempotency_key=key,
@@ -254,15 +296,14 @@ def create_return(
                 actor_id=actor.id,
             )
 
-    method = payment_method_of(order)
-    if total_refund > 0 and method is not None:
+    for method, amount in refunds:
         db.add(
             Payment(
                 sales_order_id=order.id,
                 sales_return_id=sales_return.id,
                 type="REFUND",
-                method=method,  # MVP: hoàn bằng đúng phương thức khách đã trả
-                amount=total_refund,
+                method=method,
+                amount=amount,
                 created_by=actor.id,
             )
         )

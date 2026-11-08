@@ -19,12 +19,14 @@ xây dựng theo từng giai đoạn: phân tích → thiết kế → backend �
 
 Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](docs/screenshots/04-orders.png) ·
 [giao diện điện thoại](docs/screenshots/09-dashboard-mobile.png) ·
-[sản phẩm (tối)](docs/screenshots/11-products-dark.png) · [báo cáo (tối)](docs/screenshots/12-reports-dark.png)
+[sản phẩm (tối)](docs/screenshots/11-products-dark.png) · [báo cáo (tối)](docs/screenshots/12-reports-dark.png) ·
+[thanh toán kết hợp + VietQR](docs/screenshots/14-pos-vietqr.png) · [cài đặt VietQR](docs/screenshots/13-settings-vietqr.png)
 
 ## Chức năng
 
 - **Bán hàng (POS):** tìm sản phẩm hoặc quét mã vạch, giảm giá theo % hoặc số tiền (có giới hạn theo vai trò),
-  tiền mặt / chuyển khoản / thẻ, gợi ý tiền khách đưa, in hóa đơn 80mm, phím tắt F2/F9.
+  tiền mặt / chuyển khoản / thẻ hoặc **kết hợp** nhiều cách, **mã VietQR** có sẵn số tiền (tạo ngay trên máy),
+  gợi ý tiền khách đưa, in hóa đơn 80mm, phím tắt F2/F9.
 - **Đơn hàng & trả hàng:** hủy đơn trong ngày, trả hàng trong thời hạn cấu hình (mặc định 7 ngày),
   hàng còn bán được nhập lại kho, hàng hỏng thì không; tiền hoàn tính theo giá sau giảm giá.
 - **Nhập hàng:** phiếu nháp → xác nhận nhập kho; giá vốn bình quân gia quyền được tính lại sau mỗi lần nhập.
@@ -175,7 +177,7 @@ docs/              đặc tả, thiết kế, rà soát bảo mật, ảnh màn 
 ## Giới hạn hiện tại
 
 **Chưa triển khai** (nằm ngoài phạm vi MVP, xem [đặc tả §9](docs/01-business-spec.md)):
-- Xuất Excel (hiện xuất CSV), hóa đơn điện tử, kết nối cổng thanh toán (chuyển khoản/thẻ chỉ ghi nhận).
+- Xuất Excel (hiện xuất CSV), hóa đơn điện tử, kết nối cổng thanh toán (chuyển khoản qua VietQR do thu ngân xác nhận tay; thẻ chỉ ghi nhận).
 - Quên mật khẩu qua SMS (đã có qua email — xem bên dưới).
 - Hủy phiếu nhập đã xác nhận (sai sót xử lý bằng phiếu điều chỉnh kho).
 - Giảm giá theo từng dòng, chương trình khuyến mãi, tích điểm khách hàng.
