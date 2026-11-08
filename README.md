@@ -54,7 +54,7 @@ Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](doc
 - **Giao diện:** màu khai báo bằng design token (không màu cố định trong component) → chế độ sáng/tối/theo hệ thống,
   không chớp trắng khi tải; màu biểu đồ của từng chế độ được kiểm tra độ phân biệt cho người mù màu và độ tương phản.
 - **Frontend:** trạng thái danh sách (lọc, sắp xếp, trang) lưu trên URL; mọi trang tải theo nhu cầu
-  (bundle JS chính ~118 kB gzip; thư viện form và biểu đồ tách chunk riêng); form validate bằng Zod và hiển thị lỗi từ server đúng ô nhập.
+  (JS tải ban đầu ~180 kB gzip, giảm khoảng 1/3 so với khi chưa tách; thư viện form, biểu đồ, mã QR chỉ tải khi cần); form validate bằng Zod và hiển thị lỗi từ server đúng ô nhập.
 
 Thiết kế database, API và cấu trúc dự án: [docs/](docs/README.md).
 
