@@ -12,6 +12,7 @@ import {
   type LucideIcon,
   Package,
   Settings,
+  SlidersHorizontal,
   ShoppingCart,
   Truck,
   Undo2,
@@ -56,6 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/products", label: "Sản phẩm", icon: Package, permission: P.CATALOG_VIEW },
       { to: "/categories", label: "Danh mục", icon: FolderTree, permission: P.CATALOG_VIEW },
+      { to: "/modifiers", label: "Tùy chọn món", icon: SlidersHorizontal, permission: P.CATALOG_VIEW },
       { to: "/purchases", label: "Nhập hàng", icon: ArrowLeftRight, permission: P.PURCHASES_MANAGE },
       { to: "/inventory", label: "Tồn kho", icon: Warehouse, permission: P.INVENTORY_VIEW },
       { to: "/suppliers", label: "Nhà cung cấp", icon: Truck, permission: P.SUPPLIERS_MANAGE },

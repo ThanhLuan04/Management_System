@@ -16,6 +16,7 @@ import { formatDateTime, formatMoney, formatNumber } from "@/utils/format";
 
 import { KIND_LABELS, useProduct, useProductStock, useSetProductActive } from "./api";
 import { ActiveBadge, ProductThumb, StockCell, TRANSACTION_LABELS } from "./components";
+import { ProductModifiersCard } from "./ProductModifiersCard";
 import { RecipeEditor } from "./RecipeEditor";
 
 function Info({ label, children }: { label: string; children: React.ReactNode }) {
@@ -105,7 +106,10 @@ export function ProductDetailPage() {
 
         {isDish ? (
           <div className="xl:col-span-2">
-            <RecipeEditor dish={p} canEdit={can(P.CATALOG_MANAGE)} />
+            <div className="space-y-6">
+              <RecipeEditor dish={p} canEdit={can(P.CATALOG_MANAGE)} />
+              <ProductModifiersCard dish={p} canEdit={can(P.CATALOG_MANAGE)} />
+            </div>
           </div>
         ) : (
         <Card className="xl:col-span-2">

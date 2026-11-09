@@ -25,6 +25,7 @@ function pho(overrides: Partial<Product> = {}): Product {
     description: null, is_active: true, quantity: 6, is_low_stock: false, created_at: "", updated_at: "",
     recipe: [{ ingredient: BEEF, quantity: 150 }, { ingredient: NOODLE, quantity: 200 }],
     avg_cost: "31000.0000",
+    modifier_groups: [],
     ...overrides,
   };
 }

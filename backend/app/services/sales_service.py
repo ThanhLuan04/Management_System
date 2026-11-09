@@ -23,6 +23,7 @@ from app.models import (
     Inventory,
     ItemCondition,
     KitchenStatus,
+    ModifierOption,
     OrderStatus,
     Payment,
     PaymentMethod,
@@ -31,6 +32,7 @@ from app.models import (
     SalesOrder,
     SalesOrderItem,
     SalesOrderItemComponent,
+    SalesOrderItemOption,
     SalesReturn,
     SalesReturnItem,
     ServiceType,
@@ -42,6 +44,7 @@ from app.services import (
     audit_service,
     code_gen,
     inventory_ops,
+    modifier_service,
     recipe_service,
     settings_service,
     shift_service,
@@ -169,6 +172,10 @@ def to_out(db: Session, order: SalesOrder, include_cost: bool) -> OrderOut:
             "product_id": item.product_id,
             "is_dish": bool(item.components),
             "note": item.note,
+            "options": [
+                {"group_name": o.group_name, "option_name": o.option_name, "price_delta": o.price_delta}
+                for o in item.options
+            ],
             "kitchen_status": item.kitchen_status,
             "sku": item.sku,
             "product_name": item.product_name,
@@ -442,10 +449,30 @@ def create_order(
             409,
             {"skus": no_recipe},
         )
-    # Lượng cần trừ theo từng sản phẩm có tồn: hàng hóa trừ chính nó, món trừ nguyên liệu (cộng dồn nhiều món)
-    needs = recipe_service.stock_needs([(products[item.product_id], item.quantity) for item in data.items])
+    # Tùy chọn món (size, topping): đúng nhóm của món, đủ / không quá số lựa chọn; giá dòng = giá món + giá lựa chọn
+    chosen: list[list[ModifierOption]] = []
+    unit_prices: list[Decimal] = []
+    for index, item in enumerate(data.items):
+        product = products[item.product_id]
+        try:
+            options = modifier_service.resolve_options(product, item.option_ids)
+        except ValueError as exc:
+            raise _field_error(f"items.{index}.option_ids", str(exc)) from exc
+        unit_price = product.sale_price + sum((o.price_delta for o in options), Decimal("0"))
+        if unit_price < 0:
+            raise _field_error(f"items.{index}.option_ids", "Giá món sau khi trừ tùy chọn không được âm")
+        chosen.append(options)
+        unit_prices.append(unit_price)
 
-    line_subtotals = [products[item.product_id].sale_price * item.quantity for item in data.items]
+    # Lượng cần trừ theo từng sản phẩm có tồn: hàng hóa trừ chính nó, món trừ nguyên liệu (cộng dồn nhiều món)
+    needs = recipe_service.stock_needs(
+        [
+            (products[item.product_id], item.quantity, options)
+            for item, options in zip(data.items, chosen, strict=True)
+        ]
+    )
+
+    line_subtotals = [price * item.quantity for item, price in zip(data.items, unit_prices, strict=True)]
     subtotal = sum(line_subtotals, Decimal("0"))
     discount_type = data.discount.type if data.discount else None
     discount_value = data.discount.value if data.discount else Decimal("0")
@@ -501,8 +528,13 @@ def create_order(
         queue_number=code_gen.next_value(db, "QUEUE", vn_today().strftime("%Y%m%d")) if has_dish else None,
         created_by=actor.id,
     )
-    for item, line_subtotal, allocated in zip(
-        data.items, line_subtotals, allocate_discount(line_subtotals, discount_amount), strict=True
+    for item, options, unit_price, line_subtotal, allocated in zip(
+        data.items,
+        chosen,
+        unit_prices,
+        line_subtotals,
+        allocate_discount(line_subtotals, discount_amount),
+        strict=True,
     ):
         product = products[item.product_id]
         order_item = SalesOrderItem(
@@ -511,7 +543,7 @@ def create_order(
             sku=product.sku,
             unit=product.unit,
             quantity=item.quantity,
-            unit_price=product.sale_price,
+            unit_price=unit_price,
             line_subtotal=line_subtotal,
             discount_allocated=allocated,
             line_total=line_subtotal - allocated,
@@ -523,20 +555,28 @@ def create_order(
         if product.kind == ProductKind.DISH:
             # Giá vốn món = Σ(định lượng × giá vốn bình quân của nguyên liệu, đọc trên dòng tồn đã khóa).
             # Lưu lại lượng đã trừ để hủy đơn hoàn đúng lượng này dù công thức đổi về sau.
+            # Gồm cả nguyên liệu của lựa chọn (size lớn, thêm trứng…)
+            portion = recipe_service.portion_ingredients(product, options)
             order_item.components = [
                 SalesOrderItemComponent(
-                    product_id=line.ingredient_id,
-                    quantity=line.quantity * item.quantity,
-                    unit_cost=inventories[line.ingredient_id].avg_cost,
+                    product_id=ingredient_id,
+                    quantity=per_portion * item.quantity,
+                    unit_cost=inventories[ingredient_id].avg_cost,
                 )
-                for line in product.recipe
+                for ingredient_id, per_portion in portion.items()
             ]
             order_item.unit_cost = round_cost(
                 sum(
-                    (line.quantity * inventories[line.ingredient_id].avg_cost for line in product.recipe),
+                    (qty * inventories[ingredient_id].avg_cost for ingredient_id, qty in portion.items()),
                     Decimal("0"),
                 )
             )
+            order_item.options = [
+                SalesOrderItemOption(
+                    option_id=o.id, group_name=o.group.name, option_name=o.name, price_delta=o.price_delta
+                )
+                for o in options
+            ]
         order.items.append(order_item)
     for row in payment_rows:
         row.shift_id = shift.id

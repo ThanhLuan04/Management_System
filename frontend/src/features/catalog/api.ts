@@ -52,6 +52,22 @@ export interface RecipeLine {
   quantity: number;
 }
 
+/** Lựa chọn của món: giá cộng thêm (có thể âm) */
+export interface ModifierOptionRef {
+  id: number;
+  name: string;
+  price_delta: Money;
+}
+
+/** Nhóm tùy chọn của món (Size: chọn đúng 1; Topping: 0–3) */
+export interface ModifierGroupRef {
+  id: number;
+  name: string;
+  min_select: number;
+  max_select: number;
+  options: ModifierOptionRef[];
+}
+
 export interface Product {
   id: number;
   sku: string;
@@ -74,6 +90,8 @@ export interface Product {
   quantity: number;
   is_low_stock: boolean;
   recipe: RecipeLine[];
+  /** Nhóm tùy chọn đang dùng (chỉ món ăn) */
+  modifier_groups: ModifierGroupRef[];
   /** Chỉ có khi có quyền cost.view. Món ăn: giá vốn ước tính theo công thức */
   avg_cost?: Money;
   created_at: string;

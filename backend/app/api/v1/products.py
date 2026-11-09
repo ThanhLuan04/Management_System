@@ -9,7 +9,8 @@ from app.core.permissions import Permission, permissions_for
 from app.models import User
 from app.schemas.catalog import Kind, ProductCreate, ProductOut, ProductUpdate, RecipeUpdate
 from app.schemas.common import Page, PageParams
-from app.services import product_service, recipe_service
+from app.schemas.modifier import ProductModifiersUpdate
+from app.services import modifier_service, product_service, recipe_service
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -114,6 +115,20 @@ def update_product(
 def set_recipe(product_id: int, body: RecipeUpdate, request: Request, actor: CatalogManager, db: DbSession):
     dish = product_service.get_product(db, product_id)
     product = recipe_service.set_recipe(db, dish, body, actor, client_ip(request))
+    return product_service.to_out(product, _can_view_cost(actor))
+
+
+@router.put(
+    "/{product_id}/modifier-groups",
+    response_model=ProductOut,
+    response_model_exclude_unset=True,
+    summary="Gắn nhóm tùy chọn cho món (thay toàn bộ, theo thứ tự hiển thị)",
+)
+def set_modifier_groups(
+    product_id: int, body: ProductModifiersUpdate, request: Request, actor: CatalogManager, db: DbSession
+):
+    dish = product_service.get_product(db, product_id)
+    product = modifier_service.set_product_groups(db, dish, body.group_ids, actor, client_ip(request))
     return product_service.to_out(product, _can_view_cost(actor))
 
 

@@ -232,6 +232,14 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-RC06** "Tồn" hiển thị của món = số phần còn làm được từ nguyên liệu trong kho. Món không có trong danh sách kho, báo cáo tồn, cảnh báo sắp hết, phiếu nhập và phiếu điều chỉnh (`NOT_STOCKED`).
 - **BR-RC07** Hàng hóa và nguyên liệu có thể có **đơn vị nhập** khác đơn vị kho (vd. 1 kg = 1000 g, 1 thùng = 24 lon). Phiếu nhập ghi theo đơn vị nhập (20 kg × 180.000 ₫), kho cộng theo đơn vị kho (20.000 g, giá vốn 180 ₫/g). Quy đổi được chốt vào phiếu lúc lập.
 
+### Tùy chọn món (bổ sung sau MVP)
+
+- **BR-MD01** **Nhóm tùy chọn** (Size, Topping…) dùng chung cho nhiều món, có số lựa chọn tối thiểu / tối đa (Size: đúng 1; Topping: 0–3). Chỉ món ăn mới gắn được nhóm; thứ tự gắn là thứ tự hiện ở quầy.
+- **BR-MD02** Mỗi lựa chọn có **giá cộng thêm** (số đồng nguyên, có thể âm) và **nguyên liệu trừ thêm** cho 1 phần (Thêm trứng: 1 quả; Size lớn: +50 g thịt).
+- **BR-MD03** Bán: máy chủ kiểm tra lựa chọn thuộc nhóm của món, đang dùng, đủ tối thiểu / không quá tối đa. Giá 1 phần = giá món + giá các lựa chọn (không được âm). Kho trừ công thức + nguyên liệu của lựa chọn (thiếu thì chặn như BR-RC03); giá vốn tính trên cả hai.
+- **BR-MD04** Dòng đơn chụp lại tên nhóm, tên và giá lựa chọn lúc bán. Cùng món khác lựa chọn là hai dòng riêng. Lựa chọn bị bỏ khỏi nhóm chỉ **ngừng dùng**, không xóa — đơn cũ vẫn hiển thị đúng. Hủy đơn hoàn cả nguyên liệu của lựa chọn.
+- **BR-MD05** Lựa chọn hiện trên giỏ hàng, hóa đơn, chi tiết đơn, màn hình bếp và phiếu bếp.
+
 ### Bán đồ ăn tại chỗ / mang đi và bếp (bổ sung sau MVP)
 
 - **BR-KT01** Khách trả tiền trước ở quầy. Đơn có món ăn ghi **hình thức**: mang đi (mặc định) hoặc tại chỗ — tại chỗ bắt buộc nhập **số bàn**. Mỗi đơn có món được cấp **số thứ tự trong ngày** (1, 2, 3…, đánh lại mỗi ngày) in trên hóa đơn và phiếu bếp để gọi khách.

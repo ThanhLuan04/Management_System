@@ -38,6 +38,7 @@ def to_ticket(order: SalesOrder) -> KitchenTicketOut:
                 unit=item.unit,
                 quantity=item.quantity,
                 note=item.note,
+                options=[o.option_name for o in item.options],
                 kitchen_status=item.kitchen_status,
                 kitchen_updated_at=item.kitchen_updated_at,
             )

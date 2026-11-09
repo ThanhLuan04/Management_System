@@ -105,6 +105,11 @@ export function ReturnDialog({ order, open, onOpenChange }: { order: Order; open
                 <tr key={item.id} className="align-top">
                   <td className="py-2 pr-2">
                     {item.product_name}
+                    {(item.options.length > 0 || item.note) && (
+                      <span className="block text-xs">
+                        {[item.options.map((o) => o.option_name).join(", "), item.note].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
                     <span className="tabular block text-xs text-muted">{formatMoney(estimateRefund(item, 1))}/sp sau giảm</span>
                   </td>
                   <td className="tabular px-2 py-2 text-right">{formatNumber(item.returnable_quantity)}</td>

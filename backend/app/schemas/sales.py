@@ -37,6 +37,16 @@ class OrderItemIn(StrictModel):
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None,
         BeforeValidator(empty_to_none),
     ] = Field(None, description="Ghi chú món cho bếp, vd. 'không hành'")
+    option_ids: Annotated[list[int], Field(max_length=20)] = Field(
+        default_factory=list, description="Lựa chọn của món (size, topping) — giá do backend tính"
+    )
+
+    @field_validator("option_ids")
+    @classmethod
+    def unique_options(cls, ids: list[int]) -> list[int]:
+        if len(set(ids)) != len(ids):
+            raise ValueError("Lựa chọn bị lặp")
+        return sorted(ids)
 
 
 class DiscountIn(StrictModel):
@@ -112,7 +122,7 @@ class OrderCreate(StrictModel):
     @classmethod
     def unique_products(cls, items: list[OrderItemIn]) -> list[OrderItemIn]:
         # Cùng món khác ghi chú được tách dòng ("phở" + "phở không hành"); cùng món cùng ghi chú thì gộp số lượng
-        if len({(item.product_id, item.note) for item in items}) != len(items):
+        if len({(item.product_id, item.note, tuple(item.option_ids)) for item in items}) != len(items):
             raise ValueError(
                 "Mỗi sản phẩm (cùng ghi chú) chỉ xuất hiện một dòng trong đơn (hãy tăng số lượng)"
             )
@@ -147,6 +157,12 @@ class CustomerRef(BaseModel):
     phone: str | None
 
 
+class OrderItemOptionOut(BaseModel):
+    group_name: str
+    option_name: str
+    price_delta: Decimal
+
+
 class OrderItemOut(BaseModel):
     id: int
     product_id: int
@@ -162,6 +178,7 @@ class OrderItemOut(BaseModel):
     returnable_quantity: int = Field(description="Số còn được trả (0 nếu đơn đã hủy)")
     is_dish: bool = Field(description="Món chế biến: đã trừ nguyên liệu, trả lại không nhập kho")
     note: str | None = Field(description="Ghi chú món cho bếp")
+    options: list[OrderItemOptionOut] = Field(description="Lựa chọn đã chọn (giá đã cộng vào unit_price)")
     kitchen_status: Literal["NEW", "COOKING", "READY", "SERVED"] | None = Field(
         description="Trạng thái ở bếp (null: hàng hóa, không qua bếp)"
     )

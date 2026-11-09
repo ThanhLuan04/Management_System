@@ -16,6 +16,11 @@ def _json_safe(value: Any) -> Any:
         return str(value)
     if isinstance(value, datetime | date):
         return value.isoformat()
+    # Giá trị lồng nhau (vd. danh sách lựa chọn kèm giá) cũng phải chuyển hết
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [_json_safe(v) for v in value]
     return value
 
 

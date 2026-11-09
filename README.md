@@ -33,6 +33,8 @@ Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](doc
 - **Quán ăn — công thức định lượng:** sản phẩm chia hàng hóa / món ăn / nguyên liệu; bán món tự trừ nguyên liệu
   theo công thức (thiếu thì chặn và báo rõ), giá vốn và % chi phí nguyên liệu của từng món; hủy đơn hoàn đúng
   lượng đã trừ; nhập nguyên liệu theo kg, kho tính theo g.
+- **Tùy chọn món:** nhóm size / topping dùng chung cho nhiều món, giá cộng thêm (có thể âm) và nguyên liệu trừ
+  thêm; quầy mở hộp chọn khi bấm món, phiếu bếp và hóa đơn in kèm lựa chọn.
 - **Tại chỗ / mang đi và bếp:** số thứ tự tự động trong ngày, số bàn, ghi chú từng món ("không hành");
   màn hình bếp theo từng món (chờ → đang làm → xong → đã giao) tự cập nhật, âm báo phiếu mới, cảnh báo đơn bị hủy;
   in phiếu bếp 80mm không có giá.

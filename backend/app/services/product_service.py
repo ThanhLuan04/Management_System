@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.models import Brand, Category, Inventory, Product, ProductKind, User
 from app.schemas.catalog import ProductCreate, ProductOut
-from app.services import audit_service, recipe_service
+from app.services import audit_service, modifier_service, recipe_service
 from app.utils.pagination import apply_sort, paginate
 
 logger = logging.getLogger(__name__)
@@ -91,6 +91,7 @@ def to_out(product: Product, include_cost: bool) -> ProductOut:
         "quantity": recipe_service.portions_available(product) if is_dish else product.inventory.quantity,
         "is_low_stock": not is_dish and product.is_active and product.inventory.quantity <= product.min_stock,
         "recipe": [_recipe_line(line, include_cost) for line in product.recipe],
+        "modifier_groups": modifier_service.product_groups(product),
         "created_at": product.created_at,
         "updated_at": product.updated_at,
     }

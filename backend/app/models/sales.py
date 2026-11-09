@@ -167,10 +167,27 @@ class SalesOrderItem(Base):
     kitchen_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     order: Mapped[SalesOrder] = relationship(back_populates="items")
+    # Lựa chọn khách đã chọn (size, topping) — chụp lại tên và giá lúc bán
+    options: Mapped[list["SalesOrderItemOption"]] = relationship(
+        cascade="all, delete-orphan", order_by="SalesOrderItemOption.id", lazy="selectin"
+    )
     # Dòng món ăn: nguyên liệu THỰC SỰ đã trừ (ảnh chụp công thức lúc bán) — hủy đơn hoàn lại đúng lượng này
     components: Mapped[list["SalesOrderItemComponent"]] = relationship(
         cascade="all, delete-orphan", order_by="SalesOrderItemComponent.id", lazy="selectin"
     )
+
+
+class SalesOrderItemOption(Base):
+    __tablename__ = "sales_order_item_options"
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    sales_order_item_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sales_order_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    option_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("modifier_options.id"), nullable=False)
+    group_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    option_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    price_delta: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
 
 
 class SalesOrderItemComponent(Base):

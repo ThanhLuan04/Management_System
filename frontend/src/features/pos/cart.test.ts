@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Product } from "@/features/catalog/api";
 
-import { addToCart, cartTotals, cashSuggestions, discountAmount, lineKey, quantityByProduct, setNote, setQuantity } from "./cart";
+import { addToCart, cartTotals, cashSuggestions, discountAmount, lineKey, quantityByProduct, setNote, setQuantity, unitPrice } from "./cart";
 
 const product = (id: number, price: string, quantity = 50) => ({ id, sale_price: price, quantity }) as Product;
 const milk = product(1, "32000.00");
@@ -21,7 +21,7 @@ describe("cart lines", () => {
   });
 
   it("removes a line when the quantity drops to zero", () => {
-    const cart = setQuantity(addToCart([], milk), `${milk.id}|`, 0);
+    const cart = setQuantity(addToCart([], milk), lineKey({ product: milk, options: [], note: "" }), 0);
     expect(cart).toEqual([]);
   });
 
@@ -35,8 +35,22 @@ describe("cart lines", () => {
     ]);
     expect(quantityByProduct(cart)).toEqual({ 1: 5 });
 
-    cart = setNote(cart, `${milk.id}|`, "không hành"); // trùng ghi chú → gộp
+    cart = setNote(cart, lineKey({ product: milk, options: [], note: "" }), "không hành"); // trùng ghi chú → gộp
     expect(cart.map((l) => [l.note, l.quantity])).toEqual([["không hành", 5]]);
+  });
+
+  it("prices options into the line and keeps different options on separate lines", () => {
+    const big = { id: 21, name: "Lớn", price_delta: "10000.00" };
+    const egg = { id: 30, name: "Thêm trứng", price_delta: "5000.00" };
+    let cart = addToCart([], milk, 1, [big, egg]);
+    cart = addToCart(cart, milk, 1, [egg, big]); // cùng lựa chọn (khác thứ tự) → cộng vào dòng cũ
+    cart = addToCart(cart, milk, 1);
+
+    expect(cart.map((l) => [l.quantity, unitPrice(l)])).toEqual([
+      [2, 47000],
+      [1, 32000],
+    ]);
+    expect(cartTotals(cart, null).subtotal).toBe(126000);
   });
 });
 

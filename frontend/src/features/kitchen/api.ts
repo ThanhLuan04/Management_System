@@ -9,6 +9,8 @@ export interface KitchenItem {
   unit: string;
   quantity: number;
   note: string | null;
+  /** Tên lựa chọn: ["Lớn", "Thêm trứng"] */
+  options: string[];
   kitchen_status: KitchenStatus;
   kitchen_updated_at: string | null;
 }

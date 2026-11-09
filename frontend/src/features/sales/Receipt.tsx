@@ -28,6 +28,7 @@ export function PrintableReceipt({ order, store }: { order: Order; store?: Store
           <div key={item.id} className="receipt-line">
             <p>
               {item.product_name}
+              {item.options.length > 0 && ` — ${item.options.map((o) => o.option_name).join(", ")}`}
               {item.note && ` (${item.note})`}
             </p>
             <p className="receipt-row">

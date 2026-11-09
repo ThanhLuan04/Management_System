@@ -16,6 +16,7 @@ function product(id: number, sku: string, name: string, barcode: string | null =
     purchase_unit: null,
     purchase_factor: 1,
     recipe: [],
+    modifier_groups: [],
     category: { id: 1, name: "Đồ uống" },
     brand: null,
     unit: "lon",

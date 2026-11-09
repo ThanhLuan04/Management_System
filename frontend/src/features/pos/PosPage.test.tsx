@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,6 +18,7 @@ const MILK = {
   purchase_unit: null,
   purchase_factor: 1,
   recipe: [],
+  modifier_groups: [],
   category: { id: 1, name: "Sữa" },
   brand: null,
   unit: "hộp",
@@ -35,6 +36,17 @@ const MILK = {
 const WATER = { ...MILK, id: 8, sku: "NUOC-500", barcode: null, name: "Nước suối 500ml", unit: "chai", sale_price: "5000.00", quantity: 0 };
 // Món ăn: "tồn" là số phần còn làm được từ nguyên liệu
 const PHO = { ...MILK, id: 9, sku: "PHOBO", barcode: null, name: "Phở bò", kind: "DISH" as const, unit: "tô", sale_price: "50000.00", quantity: 6 };
+// Món có tùy chọn: bấm vào → mở hộp chọn size / topping
+const BUN = {
+  ...PHO,
+  id: 10,
+  sku: "BUNBO",
+  name: "Bún bò",
+  sale_price: "45000.00",
+  modifier_groups: [
+    { id: 1, name: "Size", min_select: 1, max_select: 1, options: [{ id: 11, name: "Vừa", price_delta: "0.00" }, { id: 12, name: "Lớn", price_delta: "10000.00" }] },
+  ],
+};
 
 const SHIFT = {
   id: 9,
@@ -88,7 +100,7 @@ vi.mock("@/services/http", () => ({
       if (url === "/settings") {
         return { data: { store_name: "SmartStore", store_address: "", store_phone: "", return_window_days: 7, my_max_discount_percent: "10" } };
       }
-      if (url === "/products") return { data: { items: [MILK, WATER, PHO], page: 1, page_size: 8, total: 3 } };
+      if (url === "/products") return { data: { items: [MILK, WATER, PHO, BUN], page: 1, page_size: 8, total: 4 } };
       if (url === "/shifts/current") return { data: { shift: SHIFT, suggested_opening_cash: "500000.00" } };
       if (url === "/categories") return { data: [{ id: 1, name: "Sữa", parent_id: null, is_active: true, children: [] }] };
       throw new Error(`unexpected GET ${url}`);
@@ -153,7 +165,7 @@ describe("PosPage — quán ăn", () => {
       queue_number: 12,
       service_type: "DINE_IN",
       table_label: "Bàn 5",
-      items: [{ id: 1, product_id: 9, product_name: "Phở bò", quantity: 2, note: "không hành", is_dish: true, kitchen_status: "NEW" }],
+      items: [{ id: 1, product_id: 9, product_name: "Phở bò", quantity: 2, note: "không hành", options: [], is_dish: true, kitchen_status: "NEW" }],
     };
     vi.mocked(http.post).mockImplementationOnce(async () => ({ data: order }));
     renderPos();
@@ -187,6 +199,25 @@ describe("PosPage — quán ăn", () => {
       service_type: "DINE_IN",
       table_label: "Bàn 5",
     });
+  });
+});
+
+describe("PosPage — tùy chọn món", () => {
+  it("asks for options before adding, prices them in and sends only the option ids", async () => {
+    vi.mocked(http.post).mockImplementationOnce(async () => ({ data: { ...ORDER, items: [] } }));
+    renderPos();
+
+    await userEvent.click(await screen.findByRole("button", { name: /^Thêm Bún bò/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Bún bò" });
+    await userEvent.click(within(dialog).getByRole("radio", { name: /Lớn/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: /Thêm vào giỏ · 55\.000/ }));
+
+    expect(screen.getByLabelText("Số lượng Bún bò (Lớn)")).toHaveValue("1");
+    await userEvent.click(screen.getByRole("radio", { name: "Thẻ" }));
+    await userEvent.click(screen.getByRole("button", { name: "Thanh toán (F9)" }));
+
+    await vi.waitFor(() => expect(orderCalls()).toHaveLength(1));
+    expect(orderCalls()[0][1]).toMatchObject({ items: [{ product_id: 10, quantity: 1, option_ids: [12] }] });
   });
 });
 

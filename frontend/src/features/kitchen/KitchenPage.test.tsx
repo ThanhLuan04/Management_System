@@ -23,8 +23,8 @@ const TICKET: KitchenTicket = {
   cashier: "Thu Ngân",
   created_at: "2026-11-09T05:08:00Z", // chờ 22 phút
   items: [
-    { id: 1, product_name: "Phở bò", unit: "tô", quantity: 2, note: "không hành", kitchen_status: "NEW", kitchen_updated_at: null },
-    { id: 2, product_name: "Cơm tấm", unit: "đĩa", quantity: 1, note: null, kitchen_status: "COOKING", kitchen_updated_at: null },
+    { id: 1, product_name: "Phở bò", unit: "tô", quantity: 2, note: "không hành", options: ["Lớn"], kitchen_status: "NEW", kitchen_updated_at: null },
+    { id: 2, product_name: "Cơm tấm", unit: "đĩa", quantity: 1, note: null, options: [], kitchen_status: "COOKING", kitchen_updated_at: null },
   ],
 };
 

@@ -11,7 +11,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { FormField, Input } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Skeleton } from "@/components/ui/Spinner";
-import type { Product } from "@/features/catalog/api";
+import type { ModifierOptionRef, Product } from "@/features/catalog/api";
 import { ProductThumb } from "@/features/catalog/components";
 import { ProductPicker } from "@/features/catalog/ProductPicker";
 import type { Customer } from "@/features/partners/api";
@@ -36,7 +36,9 @@ import {
   quantityByProduct,
   setNote as setLineNote,
   setQuantity,
+  unitPrice,
 } from "./cart";
+import { OptionsDialog } from "./OptionsDialog";
 import { CustomerSelect } from "./CustomerSelect";
 import { buildPayment, emptySplit, type PayMode, type PaymentErrors, SPLIT_METHODS, splitTotal } from "./payment";
 import { ProductGrid } from "./ProductGrid";
@@ -112,8 +114,15 @@ export function PosPage() {
     idempotencyKey.current = newIdempotencyKey();
   }, []);
 
-  const addProduct = (product: Product) => {
-    setCart((prev) => addToCart(prev, product));
+  // Món có nhóm tùy chọn (size, topping) → mở hộp chọn trước khi thêm vào giỏ
+  const [choosing, setChoosing] = useState<Product | null>(null);
+
+  const addProduct = (product: Product, options?: ModifierOptionRef[]) => {
+    if (!options && product.kind === "DISH" && product.modifier_groups.length > 0) {
+      setChoosing(product);
+      return;
+    }
+    setCart((prev) => addToCart(prev, product, 1, options ?? []));
     setShortages((prev) => {
       const next = { ...prev };
       delete next[product.id];
@@ -141,7 +150,12 @@ export function PosPage() {
         idempotencyKey: idempotencyKey.current,
         payload: {
           customer_id: customer?.id ?? null,
-          items: cart.map((l) => ({ product_id: l.product.id, quantity: l.quantity, ...(l.note ? { note: l.note } : {}) })),
+          items: cart.map((l) => ({
+            product_id: l.product.id,
+            quantity: l.quantity,
+            ...(l.note ? { note: l.note } : {}),
+            ...(l.options.length ? { option_ids: l.options.map((o) => o.id) } : {}),
+          })),
           ...(hasDish ? { service_type: serviceType, table_label: serviceType === "DINE_IN" ? tableLabel.trim() : null } : {}),
           discount: totals.discount > 0 ? { type: discount.type, value: discount.value } : null,
           ...payment.payload,
@@ -273,7 +287,9 @@ export function PosPage() {
                   // Một món có thể nằm ở nhiều dòng (khác ghi chú) → so TỔNG số lượng của món với tồn
                   const available = shortages[line.product.id] ?? line.product.quantity;
                   const short = inCart[line.product.id] > available;
-                  const label = line.note ? `${line.product.name} (${line.note})` : line.product.name;
+                  const optionNames = line.options.map((o) => o.name).join(", ");
+                  const details = [optionNames, line.note].filter(Boolean).join("; ");
+                  const label = details ? `${line.product.name} (${details})` : line.product.name;
                   return (
                     <li key={key} className={cn("px-2 py-2.5", short && "rounded-md bg-destructive-soft")}>
                       <div className="flex items-start gap-2.5">
@@ -283,8 +299,9 @@ export function PosPage() {
                             {line.product.name}
                           </p>
                           <p className="tabular text-xs text-muted">
-                            {formatMoney(line.product.sale_price)} · còn {formatNumber(available)} {isDish ? "phần" : line.product.unit}
+                            {formatMoney(unitPrice(line))} · còn {formatNumber(available)} {isDish ? "phần" : line.product.unit}
                           </p>
+                          {optionNames && <p className="text-xs font-medium">{optionNames}</p>}
                           {line.note && editingNote?.key !== key && <p className="text-xs font-medium text-warning-strong">→ {line.note}</p>}
                           {short && (
                             <p className="text-xs font-medium text-destructive">
@@ -599,6 +616,16 @@ export function PosPage() {
           <PrintableReceipt order={lastOrder} store={store.data} />
           {lastOrder.items.some((i) => i.is_dish) && <KitchenTicketPrint ticket={ticketFromOrder(lastOrder)} />}
         </>
+      )}
+      {choosing && (
+        <OptionsDialog
+          product={choosing}
+          onClose={() => setChoosing(null)}
+          onConfirm={(options) => {
+            addProduct(choosing, options);
+            setChoosing(null);
+          }}
+        />
       )}
       <CloseShiftDialog shift={shift} open={showShift} onOpenChange={setShowShift} />
     </>

@@ -175,6 +175,11 @@ export function OrderDetailPage() {
                           {i.unit_cost !== undefined && ` · giá vốn ${formatMoney(i.unit_cost)}`}
                           {i.kitchen_status && ` · bếp: ${KITCHEN_LABELS[i.kitchen_status]}`}
                         </span>
+                        {i.options.length > 0 && (
+                          <span className="block text-xs font-medium">
+                            {i.options.map((o) => (Number(o.price_delta) ? `${o.option_name} (${Number(o.price_delta) > 0 ? "+" : "−"}${formatMoney(Math.abs(Number(o.price_delta)))})` : o.option_name)).join(", ")}
+                          </span>
+                        )}
                         {i.note && <span className="block text-xs font-medium text-warning-strong">→ {i.note}</span>}
                       </td>
                       <td className="px-3 py-2.5 text-right">{formatNumber(i.quantity)}</td>

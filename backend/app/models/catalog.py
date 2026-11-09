@@ -109,6 +109,12 @@ class Product(TimestampMixin, Base):
         order_by="RecipeItem.id",
         lazy="selectin",
     )
+    # Nhóm tùy chọn gắn vào món (chỉ món ăn), theo thứ tự hiển thị
+    modifier_links: Mapped[list["ProductModifierGroup"]] = relationship(  # noqa: F821
+        cascade="all, delete-orphan",
+        order_by="ProductModifierGroup.sort_order",
+        lazy="selectin",
+    )
 
 
 class RecipeItem(Base):

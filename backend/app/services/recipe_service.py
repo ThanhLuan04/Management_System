@@ -7,12 +7,13 @@ Công thức định lượng của món ăn.
 """
 
 from collections import defaultdict
+from collections.abc import Sequence
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
 from app.core.errors import AppError
-from app.models import Product, ProductKind, RecipeItem, User
+from app.models import ModifierOption, Product, ProductKind, RecipeItem, User
 from app.schemas.catalog import RecipeUpdate
 from app.services import audit_service
 from app.services.pricing import round_cost
@@ -31,13 +32,24 @@ def estimated_cost(dish: Product) -> Decimal:
     )
 
 
-def stock_needs(lines: list[tuple[Product, int]]) -> dict[int, int]:
+def portion_ingredients(dish: Product, options: Sequence[ModifierOption] = ()) -> dict[int, int]:
+    """Nguyên liệu cho 1 phần món: công thức gốc + nguyên liệu của các lựa chọn (size lớn, thêm trứng…), cộng dồn."""
+    portion: dict[int, int] = defaultdict(int)
+    for line in dish.recipe:
+        portion[line.ingredient_id] += line.quantity
+    for option in options:
+        for line in option.ingredients:
+            portion[line.ingredient_id] += line.quantity
+    return dict(portion)
+
+
+def stock_needs(lines: list[tuple[Product, int, Sequence[ModifierOption]]]) -> dict[int, int]:
     """Tổng lượng cần trừ theo từng sản phẩm có tồn: hàng hóa trừ chính nó, món trừ nguyên liệu (cộng dồn các món)."""
     needs: dict[int, int] = defaultdict(int)
-    for product, quantity in lines:
+    for product, quantity, options in lines:
         if product.kind == ProductKind.DISH:
-            for line in product.recipe:
-                needs[line.ingredient_id] += line.quantity * quantity
+            for ingredient_id, per_portion in portion_ingredients(product, options).items():
+                needs[ingredient_id] += per_portion * quantity
         else:
             needs[product.id] += quantity
     return dict(needs)

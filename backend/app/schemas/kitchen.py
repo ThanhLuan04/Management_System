@@ -14,6 +14,7 @@ class KitchenItemOut(BaseModel):
     unit: str
     quantity: int
     note: str | None
+    options: list[str] = Field(description="Tên lựa chọn: ['Lớn', 'Thêm trứng']")
     kitchen_status: Status
     kitchen_updated_at: datetime | None
 

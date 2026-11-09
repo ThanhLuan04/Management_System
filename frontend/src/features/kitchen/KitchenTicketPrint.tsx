@@ -12,11 +12,14 @@ export interface PrintableTicket {
   table_label: string | null;
   note: string | null;
   created_at: string;
-  items: { id: number; product_name: string; quantity: number; note: string | null }[];
+  items: { id: number; product_name: string; quantity: number; note: string | null; options: string[] }[];
 }
 
 export function ticketFromOrder(order: Order): PrintableTicket {
-  return { ...order, items: order.items.filter((i) => i.is_dish) };
+  return {
+    ...order,
+    items: order.items.filter((i) => i.is_dish).map((i) => ({ ...i, options: i.options.map((o) => o.option_name) })),
+  };
 }
 
 /**
@@ -42,6 +45,7 @@ export function KitchenTicketPrint({ ticket }: { ticket: PrintableTicket }) {
             <p className="receipt-item">
               {formatNumber(item.quantity)} × {item.product_name}
             </p>
+            {item.options.length > 0 && <p className="receipt-note">{item.options.join(", ")}</p>}
             {item.note && <p className="receipt-note">→ {item.note}</p>}
           </div>
         ))}

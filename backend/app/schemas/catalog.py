@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
 from app.schemas.common import StrictModel, empty_to_none
+from app.schemas.modifier import GroupRef
 
 Name100 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 OptionalLongText = Annotated[
@@ -145,6 +146,7 @@ class ProductOut(BaseModel):
     )
     is_low_stock: bool
     recipe: list[RecipeLineOut] = Field(description="Công thức định lượng (chỉ món ăn)")
+    modifier_groups: list[GroupRef] = Field(description="Nhóm tùy chọn đang dùng của món (size, topping…)")
     avg_cost: Decimal | None = Field(
         None,
         description="Giá vốn bình quân (món ăn: giá vốn ước tính theo công thức) — chỉ có khi có quyền cost.view",

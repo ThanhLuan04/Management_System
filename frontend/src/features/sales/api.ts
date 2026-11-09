@@ -34,6 +34,8 @@ export interface OrderItem {
   is_dish: boolean;
   /** Ghi chú món cho bếp */
   note: string | null;
+  /** Lựa chọn đã chọn — giá đã cộng vào unit_price */
+  options: { group_name: string; option_name: string; price_delta: Money }[];
   /** Trạng thái ở bếp — null: hàng hóa, không qua bếp */
   kitchen_status: KitchenStatus | null;
   unit_cost?: Money;
@@ -74,7 +76,7 @@ export interface SplitPayment {
 
 export interface OrderPayload {
   customer_id: number | null;
-  items: { product_id: number; quantity: number; note?: string | null }[];
+  items: { product_id: number; quantity: number; note?: string | null; option_ids?: number[] }[];
   /** Đơn có món ăn: tại chỗ (kèm số bàn) / mang đi */
   service_type?: ServiceType;
   table_label?: string | null;

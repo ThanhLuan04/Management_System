@@ -2,13 +2,15 @@
  * Giỏ hàng POS — chỉ để XEM TRƯỚC. Backend tính lại toàn bộ khi tạo đơn (không tin số tiền từ client).
  * Công thức giống app/services/pricing.py để số xem trước khớp số thật.
  */
-import type { Product } from "@/features/catalog/api";
+import type { ModifierOptionRef, Product } from "@/features/catalog/api";
 
 export interface CartLine {
   product: Product;
   quantity: number;
   /** Ghi chú cho bếp ("không hành"); "" = không ghi chú. Cùng món khác ghi chú là hai dòng riêng. */
   note: string;
+  /** Lựa chọn (size, topping) — cùng món khác lựa chọn là hai dòng riêng */
+  options: ModifierOptionRef[];
 }
 
 export type DiscountType = "PERCENT" | "AMOUNT";
@@ -19,15 +21,27 @@ export interface Discount {
   value: string;
 }
 
-const price = (line: CartLine) => Math.round(Number(line.product.sale_price));
+/** Giá 1 phần = giá món + giá các lựa chọn (máy chủ tính lại y hệt). */
+export const unitPrice = (line: Pick<CartLine, "product" | "options">) =>
+  Math.round(Number(line.product.sale_price)) + line.options.reduce((sum, o) => sum + Math.round(Number(o.price_delta)), 0);
 
-/** Khóa của dòng giỏ hàng: sản phẩm + ghi chú (giống ràng buộc ở backend). */
-export const lineKey = (line: Pick<CartLine, "product" | "note">) => `${line.product.id}|${line.note}`;
+const price = unitPrice;
 
-export function addToCart(cart: CartLine[], product: Product, quantity = 1): CartLine[] {
-  // Bấm / quét thêm luôn cộng vào dòng KHÔNG ghi chú; dòng có ghi chú chỉ tạo khi sửa ghi chú
-  const index = cart.findIndex((l) => l.product.id === product.id && l.note === "");
-  if (index === -1) return [...cart, { product, quantity, note: "" }];
+const optionKey = (options: ModifierOptionRef[]) =>
+  options
+    .map((o) => o.id)
+    .sort((a, b) => a - b)
+    .join(",");
+
+/** Khóa của dòng giỏ hàng: sản phẩm + lựa chọn + ghi chú (giống ràng buộc ở backend). */
+export const lineKey = (line: Pick<CartLine, "product" | "note" | "options">) =>
+  `${line.product.id}|${optionKey(line.options)}|${line.note}`;
+
+export function addToCart(cart: CartLine[], product: Product, quantity = 1, options: ModifierOptionRef[] = []): CartLine[] {
+  // Bấm / quét thêm cộng vào dòng cùng lựa chọn và KHÔNG ghi chú; dòng có ghi chú chỉ tạo khi sửa ghi chú
+  const key = lineKey({ product, options, note: "" });
+  const index = cart.findIndex((l) => lineKey(l) === key);
+  if (index === -1) return [...cart, { product, quantity, note: "", options }];
   // Cập nhật thông tin sản phẩm mới nhất (tồn kho, giá) khi quét lại
   return cart.map((l, i) => (i === index ? { ...l, product, quantity: l.quantity + quantity } : l));
 }
@@ -42,7 +56,7 @@ export function setNote(cart: CartLine[], key: string, note: string): CartLine[]
   const line = cart.find((l) => lineKey(l) === key);
   const normalized = note.trim().slice(0, 200);
   if (!line || normalized === line.note) return cart;
-  const targetKey = lineKey({ product: line.product, note: normalized });
+  const targetKey = lineKey({ ...line, note: normalized });
   if (cart.some((l) => lineKey(l) === targetKey)) {
     return cart
       .filter((l) => lineKey(l) !== key)

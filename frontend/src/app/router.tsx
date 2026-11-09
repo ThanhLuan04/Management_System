@@ -90,6 +90,7 @@ export const router = createBrowserRouter([
         page(":id", "Chi tiết", P.CATALOG_VIEW, async () => (await import("@/features/catalog/ProductDetailPage")).ProductDetailPage),
         page(":id/edit", "Sửa sản phẩm", P.CATALOG_MANAGE, async () => (await import("@/features/catalog/ProductFormPage")).ProductFormPage, "edit"),
       ]),
+      page("modifiers", "Tùy chọn món", P.CATALOG_VIEW, async () => (await import("@/features/catalog/ModifiersPage")).ModifiersPage),
       page("categories", "Danh mục & thương hiệu", P.CATALOG_VIEW, async () => (await import("@/features/catalog/CategoriesPage")).CategoriesPage),
       section("purchases", "Nhập hàng", P.PURCHASES_MANAGE, async () => (await import("@/features/purchases/PurchaseListPage")).PurchaseListPage, [
         page("new", "Tạo phiếu nhập", P.PURCHASES_MANAGE, async () => (await import("@/features/purchases/PurchaseFormPage")).PurchaseFormPage, "new"),

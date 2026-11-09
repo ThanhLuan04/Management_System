@@ -1,6 +1,12 @@
 # Import mọi model ở đây để Alembic (autogenerate) và SQLAlchemy nhìn thấy đầy đủ metadata
 from app.models.attendance import TimeEntry
 from app.models.catalog import Brand, Category, Inventory, Product, ProductKind, RecipeItem
+from app.models.modifier import (
+    ModifierGroup,
+    ModifierOption,
+    ModifierOptionIngredient,
+    ProductModifierGroup,
+)
 from app.models.partner import Customer, Supplier
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus
 from app.models.sales import (
@@ -12,6 +18,7 @@ from app.models.sales import (
     SalesOrder,
     SalesOrderItem,
     SalesOrderItemComponent,
+    SalesOrderItemOption,
     SalesReturn,
     SalesReturnItem,
     ServiceType,
@@ -39,11 +46,15 @@ __all__ = [
     "InventoryTransaction",
     "ItemCondition",
     "KitchenStatus",
+    "ModifierGroup",
+    "ModifierOption",
+    "ModifierOptionIngredient",
     "OrderStatus",
     "PasswordResetCode",
     "Payment",
     "PaymentMethod",
     "Product",
+    "ProductModifierGroup",
     "ProductKind",
     "PurchaseOrder",
     "PurchaseOrderItem",
@@ -54,6 +65,7 @@ __all__ = [
     "SalesOrder",
     "SalesOrderItem",
     "SalesOrderItemComponent",
+    "SalesOrderItemOption",
     "SalesReturn",
     "SalesReturnItem",
     "ServiceType",

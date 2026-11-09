@@ -114,6 +114,7 @@ function TicketCard({
                 <p className={cn("font-semibold", served && "line-through")}>
                   <span className="tabular">{formatNumber(item.quantity)}</span> × {item.product_name}
                 </p>
+                {item.options.length > 0 && <p className="text-sm font-semibold text-primary">{item.options.join(", ")}</p>}
                 {item.note && <p className="text-sm font-medium text-warning-strong">→ {item.note}</p>}
                 <Badge variant={STATUS_VARIANTS[item.kitchen_status]} className="mt-1">
                   {KITCHEN_LABELS[item.kitchen_status]}

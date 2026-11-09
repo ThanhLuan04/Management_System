@@ -102,6 +102,19 @@ Quên mật khẩu Admin khi chưa có email: chạy `python -m scripts.reset_pa
 
 `POST /orders`, `POST /orders/{id}/returns`, `POST /orders/{id}/cancel` trả `409 NO_OPEN_SHIFT` khi chưa mở ca.
 
+### Tùy chọn món (bổ sung sau MVP)
+
+| Method | URL | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/modifier-groups` | Nhóm tùy chọn kèm lựa chọn đang dùng, nguyên liệu trừ thêm, số món đang gắn | A M C |
+| POST | `/modifier-groups` | Tạo nhóm `{name, min_select, max_select, options: [{name, price_delta, ingredients: [{ingredient_id, quantity}]}]}` | A M |
+| PUT | `/modifier-groups/{id}` | Lưu cả nhóm; lựa chọn có `id` được sửa, không có `id` được thêm, lựa chọn cũ vắng mặt bị ngừng dùng | A M |
+| PUT | `/products/{id}/modifier-groups` | Gắn nhóm cho món `{group_ids}` (thay toàn bộ, theo thứ tự); không phải món → `NOT_A_DISH` | A M |
+
+Sản phẩm có thêm `modifier_groups` (nhóm đang dùng + lựa chọn đang dùng). `POST /orders`: `items[].option_ids`
+(sai nhóm / thiếu / thừa → `422` tại `items.{i}.option_ids`); dòng đơn trả `options: [{group_name, option_name, price_delta}]`
+và `unit_price` đã gồm giá lựa chọn; phiếu bếp trả `items[].options` (tên lựa chọn).
+
 ### Bếp (bổ sung sau MVP)
 
 | Method | URL | Mô tả | Quyền |
