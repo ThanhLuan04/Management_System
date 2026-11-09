@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock, Minus, Plus, Printer, Trash2 } from "lucide-react";
+import { CheckCircle2, ChefHat, Clock, Minus, NotebookPen, Plus, Printer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -15,7 +15,8 @@ import type { Product } from "@/features/catalog/api";
 import { ProductThumb } from "@/features/catalog/components";
 import { ProductPicker } from "@/features/catalog/ProductPicker";
 import type { Customer } from "@/features/partners/api";
-import { newIdempotencyKey, type Order, useCreateOrder, useStoreSettings } from "@/features/sales/api";
+import { KitchenTicketPrint, printKitchenTicket, ticketFromOrder } from "@/features/kitchen/KitchenTicketPrint";
+import { newIdempotencyKey, type Order, SERVICE_LABELS, type ServiceType, useCreateOrder, useStoreSettings } from "@/features/sales/api";
 import { PAYMENT_METHOD_LABELS } from "@/features/sales/OrderStatusBadge";
 import { PrintableReceipt } from "@/features/sales/Receipt";
 import { useCurrentShift } from "@/features/shifts/api";
@@ -24,7 +25,18 @@ import { toApiError } from "@/services/apiError";
 import { cn } from "@/utils/cn";
 import { formatMoney, formatNumber, toNumber } from "@/utils/format";
 
-import { addToCart, type CartLine, cartTotals, cashSuggestions, type Discount, lineSubtotal, setQuantity } from "./cart";
+import {
+  addToCart,
+  type CartLine,
+  cartTotals,
+  cashSuggestions,
+  type Discount,
+  lineKey,
+  lineSubtotal,
+  quantityByProduct,
+  setNote as setLineNote,
+  setQuantity,
+} from "./cart";
 import { CustomerSelect } from "./CustomerSelect";
 import { buildPayment, emptySplit, type PayMode, type PaymentErrors, SPLIT_METHODS, splitTotal } from "./payment";
 import { ProductGrid } from "./ProductGrid";
@@ -50,7 +62,12 @@ export function PosPage() {
   const [split, setSplit] = useState(emptySplit);
   const [transferConfirmed, setTransferConfirmed] = useState(false);
   const [note, setNote] = useState("");
-  const [errors, setErrors] = useState<{ discount?: string } & PaymentErrors>({});
+  const [errors, setErrors] = useState<{ discount?: string; table?: string } & PaymentErrors>({});
+  // Đơn có món ăn: mang đi (gọi theo số thứ tự) / tại chỗ (cần số bàn)
+  const [serviceType, setServiceType] = useState<ServiceType>("TAKEAWAY");
+  const [tableLabel, setTableLabel] = useState("");
+  // Dòng đang sửa ghi chú cho bếp: khóa dòng + nội dung đang gõ
+  const [editingNote, setEditingNote] = useState<{ key: string; value: string } | null>(null);
   // product_id → số còn trong kho theo server (khi server báo hết hàng)
   const [shortages, setShortages] = useState<Record<number, number>>({});
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
@@ -61,6 +78,8 @@ export function PosPage() {
   const pickerWrapper = useRef<HTMLDivElement>(null);
 
   const totals = cartTotals(cart, discount);
+  const inCart = quantityByProduct(cart);
+  const hasDish = cart.some((l) => l.product.kind === "DISH");
   const limit = store.data?.my_max_discount_percent;
   const maxPercent = limit === null || limit === undefined ? null : toNumber(limit);
   const cashValue = toNumber(cash);
@@ -85,6 +104,9 @@ export function PosPage() {
     setSplit(emptySplit());
     setTransferConfirmed(false);
     setNote("");
+    setServiceType("TAKEAWAY");
+    setTableLabel("");
+    setEditingNote(null);
     setErrors({});
     setShortages({});
     idempotencyKey.current = newIdempotencyKey();
@@ -110,6 +132,7 @@ export function PosPage() {
       transferRef,
     );
     if (!payment.ok) Object.assign(nextErrors, payment.errors);
+    if (hasDish && serviceType === "DINE_IN" && !tableLabel.trim()) nextErrors.table = "Nhập số bàn để mang món ra";
     setErrors(nextErrors);
     if (cart.length === 0 || !payment.ok || Object.keys(nextErrors).length > 0 || createOrder.isPending) return;
 
@@ -118,7 +141,8 @@ export function PosPage() {
         idempotencyKey: idempotencyKey.current,
         payload: {
           customer_id: customer?.id ?? null,
-          items: cart.map((l) => ({ product_id: l.product.id, quantity: l.quantity })),
+          items: cart.map((l) => ({ product_id: l.product.id, quantity: l.quantity, ...(l.note ? { note: l.note } : {}) })),
+          ...(hasDish ? { service_type: serviceType, table_label: serviceType === "DINE_IN" ? tableLabel.trim() : null } : {}),
           discount: totals.discount > 0 ? { type: discount.type, value: discount.value } : null,
           ...payment.payload,
           note: note.trim() || null,
@@ -218,7 +242,7 @@ export function PosPage() {
             <div ref={pickerWrapper}>
               <ProductPicker onSelect={addProduct} autoFocus label="Tìm sản phẩm để bán (F2)" filter={{ sellable: true }} />
             </div>
-            <ProductGrid onSelect={addProduct} inCart={Object.fromEntries(cart.map((l) => [l.product.id, l.quantity]))} />
+            <ProductGrid onSelect={addProduct} inCart={inCart} />
           </CardContent>
         </Card>
 
@@ -244,10 +268,14 @@ export function PosPage() {
             ) : (
               <ul className="-mx-2 divide-y divide-border" aria-label="Giỏ hàng">
                 {cart.map((line) => {
+                  const key = lineKey(line);
+                  const isDish = line.product.kind === "DISH";
+                  // Một món có thể nằm ở nhiều dòng (khác ghi chú) → so TỔNG số lượng của món với tồn
                   const available = shortages[line.product.id] ?? line.product.quantity;
-                  const short = line.quantity > available;
+                  const short = inCart[line.product.id] > available;
+                  const label = line.note ? `${line.product.name} (${line.note})` : line.product.name;
                   return (
-                    <li key={line.product.id} className={cn("px-2 py-2.5", short && "rounded-md bg-destructive-soft")}>
+                    <li key={key} className={cn("px-2 py-2.5", short && "rounded-md bg-destructive-soft")}>
                       <div className="flex items-start gap-2.5">
                         <ProductThumb url={line.product.image_url} name={line.product.name} className="h-9 w-9 text-xs" />
                         <div className="min-w-0 flex-1">
@@ -255,30 +283,65 @@ export function PosPage() {
                             {line.product.name}
                           </p>
                           <p className="tabular text-xs text-muted">
-                            {formatMoney(line.product.sale_price)} · còn {formatNumber(available)} {line.product.unit}
+                            {formatMoney(line.product.sale_price)} · còn {formatNumber(available)} {isDish ? "phần" : line.product.unit}
                           </p>
-                          {short && <p className="text-xs font-medium text-destructive">Chỉ còn {formatNumber(available)} trong kho</p>}
+                          {line.note && editingNote?.key !== key && <p className="text-xs font-medium text-warning-strong">→ {line.note}</p>}
+                          {short && (
+                            <p className="text-xs font-medium text-destructive">
+                              {isDish ? `Nguyên liệu chỉ đủ ${formatNumber(available)} phần` : `Chỉ còn ${formatNumber(available)} trong kho`}
+                            </p>
+                          )}
+                          {editingNote?.key === key && (
+                            <Input
+                              autoFocus
+                              aria-label={`Ghi chú cho bếp: ${label}`}
+                              placeholder="vd. không hành, ít cay"
+                              maxLength={200}
+                              className="mt-1 h-8 text-sm"
+                              value={editingNote.value}
+                              onChange={(e) => setEditingNote({ key, value: e.target.value })}
+                              onBlur={() => {
+                                setCart((c) => setLineNote(c, key, editingNote.value));
+                                setEditingNote(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") e.currentTarget.blur();
+                                if (e.key === "Escape") setEditingNote(null);
+                              }}
+                            />
+                          )}
                         </div>
-                        <Button variant="ghost" size="icon" className="-mt-1 h-8 w-8" aria-label={`Xóa ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, 0))}>
+                        {isDish && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="-mt-1 h-8 w-8"
+                            aria-label={`Ghi chú cho bếp: ${label}`}
+                            onClick={() => setEditingNote({ key, value: line.note })}
+                          >
+                            <NotebookPen className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="-mt-1 h-8 w-8" aria-label={`Xóa ${label}`} onClick={() => setCart((c) => setQuantity(c, key, 0))}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                       <div className="mt-1.5 flex items-center justify-between pl-[46px]">
                         <div className="flex items-center gap-1">
-                          <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Giảm ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, line.quantity - 1))}>
+                          <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Giảm ${label}`} onClick={() => setCart((c) => setQuantity(c, key, line.quantity - 1))}>
                             <Minus className="h-3.5 w-3.5" />
                           </Button>
                           <Input
-                            aria-label={`Số lượng ${line.product.name}`}
+                            aria-label={`Số lượng ${label}`}
                             inputMode="numeric"
                             value={line.quantity}
                             onChange={(e) => {
                               const n = Number(e.target.value.replace(/\D/g, ""));
-                              if (n > 0) setCart((c) => setQuantity(c, line.product.id, n));
+                              if (n > 0) setCart((c) => setQuantity(c, key, n));
                             }}
                             className="h-8 w-14 text-center tabular"
                           />
-                          <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Tăng ${line.product.name}`} onClick={() => setCart((c) => setQuantity(c, line.product.id, line.quantity + 1))}>
+                          <Button variant="outline" size="icon" className="h-8 w-8" aria-label={`Tăng ${label}`} onClick={() => setCart((c) => setQuantity(c, key, line.quantity + 1))}>
                             <Plus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -293,6 +356,42 @@ export function PosPage() {
             <div className="border-t border-border pt-4">
               <h2 className="mb-3 text-base font-semibold">Thanh toán</h2>
               <div className="space-y-4">
+                {hasDish && (
+                  <div className="space-y-2">
+                    <div role="radiogroup" aria-label="Hình thức" className="grid grid-cols-2 gap-1 rounded-lg bg-surface-hover p-1">
+                      {(["TAKEAWAY", "DINE_IN"] as const).map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          role="radio"
+                          aria-checked={serviceType === type}
+                          onClick={() => setServiceType(type)}
+                          className={cn(
+                            "rounded-md px-3 py-1.5 text-sm font-medium transition",
+                            serviceType === type ? "bg-card shadow-sm" : "text-muted hover:text-foreground",
+                          )}
+                        >
+                          {SERVICE_LABELS[type]}
+                        </button>
+                      ))}
+                    </div>
+                    {serviceType === "DINE_IN" && (
+                      <FormField label="Số bàn" htmlFor="table-label" required error={errors.table}>
+                        <Input
+                          id="table-label"
+                          placeholder="vd. Bàn 5"
+                          maxLength={20}
+                          invalid={!!errors.table}
+                          value={tableLabel}
+                          onChange={(e) => {
+                            setTableLabel(e.target.value);
+                            setErrors((x) => ({ ...x, table: undefined }));
+                          }}
+                        />
+                      </FormField>
+                    )}
+                  </div>
+                )}
                 <CustomerSelect value={customer} onChange={setCustomer} />
 
                 <dl className="space-y-1.5 text-sm">
@@ -461,7 +560,7 @@ export function PosPage() {
             open
             onOpenChange={(open) => !open && setLastOrder(null)}
             title="Thanh toán thành công"
-            description={`Đơn ${lastOrder.code}`}
+            description={lastOrder.queue_number !== null ? `Đơn ${lastOrder.code} · Số thứ tự ${lastOrder.queue_number}` : `Đơn ${lastOrder.code}`}
             footer={
               <>
                 <Link to={`/orders/${lastOrder.id}`} className={buttonClass({ variant: "outline" })}>
@@ -470,6 +569,11 @@ export function PosPage() {
                 <Button variant="outline" onClick={() => window.print()}>
                   <Printer className="h-4 w-4" aria-hidden /> In hóa đơn
                 </Button>
+                {lastOrder.items.some((i) => i.is_dish) && (
+                  <Button variant="outline" onClick={printKitchenTicket}>
+                    <ChefHat className="h-4 w-4" aria-hidden /> In phiếu bếp
+                  </Button>
+                )}
                 <Button autoFocus onClick={() => setLastOrder(null)}>
                   Đơn mới
                 </Button>
@@ -478,6 +582,12 @@ export function PosPage() {
           >
             <div className="flex flex-col items-center gap-2 py-2 text-center">
               <CheckCircle2 className="h-12 w-12 text-success" aria-hidden />
+              {lastOrder.queue_number !== null && (
+                <p className="text-lg font-semibold">
+                  Số thứ tự: <span className="tabular text-2xl">{lastOrder.queue_number}</span>
+                  {lastOrder.table_label && ` · ${lastOrder.table_label}`}
+                </p>
+              )}
               <p className="tabular text-3xl font-bold">{formatMoney(lastOrder.total_amount)}</p>
               {lastOrder.payments[0]?.change_amount && Number(lastOrder.payments[0].change_amount) > 0 && (
                 <p className="text-lg">
@@ -487,6 +597,7 @@ export function PosPage() {
             </div>
           </Dialog>
           <PrintableReceipt order={lastOrder} store={store.data} />
+          {lastOrder.items.some((i) => i.is_dish) && <KitchenTicketPrint ticket={ticketFromOrder(lastOrder)} />}
         </>
       )}
       <CloseShiftDialog shift={shift} open={showShift} onOpenChange={setShowShift} />

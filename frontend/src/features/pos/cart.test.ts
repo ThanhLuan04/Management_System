@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Product } from "@/features/catalog/api";
 
-import { addToCart, cartTotals, cashSuggestions, discountAmount, setQuantity } from "./cart";
+import { addToCart, cartTotals, cashSuggestions, discountAmount, lineKey, quantityByProduct, setNote, setQuantity } from "./cart";
 
 const product = (id: number, price: string, quantity = 50) => ({ id, sale_price: price, quantity }) as Product;
 const milk = product(1, "32000.00");
@@ -21,8 +21,22 @@ describe("cart lines", () => {
   });
 
   it("removes a line when the quantity drops to zero", () => {
-    const cart = setQuantity(addToCart([], milk), milk.id, 0);
+    const cart = setQuantity(addToCart([], milk), `${milk.id}|`, 0);
     expect(cart).toEqual([]);
+  });
+
+  it("splits a dish into a separate line by note and merges identical notes", () => {
+    let cart = addToCart([], milk, 3);
+    cart = setNote(cart, lineKey(cart[0]), "  không hành ");
+    cart = addToCart(cart, milk, 2); // thêm tiếp → dòng không ghi chú mới
+    expect(cart.map((l) => [l.note, l.quantity])).toEqual([
+      ["không hành", 3],
+      ["", 2],
+    ]);
+    expect(quantityByProduct(cart)).toEqual({ 1: 5 });
+
+    cart = setNote(cart, `${milk.id}|`, "không hành"); // trùng ghi chú → gộp
+    expect(cart.map((l) => [l.note, l.quantity])).toEqual([["không hành", 5]]);
   });
 });
 

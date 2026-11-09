@@ -46,8 +46,17 @@ def _use_test_database() -> None:
 def _reset_database() -> None:
     from alembic import command
     from alembic.config import Config
+    from sqlalchemy import text
+
+    from app.db.session import engine
 
     config = Config(str(BACKEND_DIR / "alembic.ini"))
+    # Dữ liệu cũ (từ pytest / lần E2E trước) có thể chặn downgrade: role đang được dùng, đơn có 2 dòng cùng món
+    # không tạo lại được unique cũ… → dọn sạch trước (giống tests/conftest.py). CASCADE dọn mọi bảng tham chiếu users.
+    with engine.begin() as conn:
+        if conn.scalar(text("SELECT to_regclass('public.users')")) is not None:
+            conn.execute(text("TRUNCATE users CASCADE"))
+    engine.dispose()
     command.downgrade(config, "base")
     command.upgrade(config, "head")
 

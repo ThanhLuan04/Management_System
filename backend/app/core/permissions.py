@@ -29,13 +29,15 @@ class Permission(StrEnum):
     COST_VIEW = "cost.view"
     ATTENDANCE_SELF = "attendance.self"  # tự chấm công vào / ra ca
     ATTENDANCE_MANAGE = "attendance.manage"  # xem bảng công, lương; sửa giờ khi quên chấm
+    KITCHEN_OPERATE = "kitchen.operate"  # màn hình bếp: xem phiếu, đổi trạng thái món, in phiếu bếp
 
 
-_KITCHEN = frozenset({Permission.ATTENDANCE_SELF})
+_KITCHEN = frozenset({Permission.ATTENDANCE_SELF, Permission.KITCHEN_OPERATE})
 
 _CASHIER = frozenset(
     {
         Permission.ATTENDANCE_SELF,
+        Permission.KITCHEN_OPERATE,  # quầy nhỏ: thu ngân cũng giao món / xem món xong chưa
         Permission.CATALOG_VIEW,
         Permission.INVENTORY_VIEW,
         Permission.CUSTOMERS_VIEW,

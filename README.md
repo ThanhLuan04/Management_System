@@ -33,6 +33,9 @@ Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](doc
 - **Quán ăn — công thức định lượng:** sản phẩm chia hàng hóa / món ăn / nguyên liệu; bán món tự trừ nguyên liệu
   theo công thức (thiếu thì chặn và báo rõ), giá vốn và % chi phí nguyên liệu của từng món; hủy đơn hoàn đúng
   lượng đã trừ; nhập nguyên liệu theo kg, kho tính theo g.
+- **Tại chỗ / mang đi và bếp:** số thứ tự tự động trong ngày, số bàn, ghi chú từng món ("không hành");
+  màn hình bếp theo từng món (chờ → đang làm → xong → đã giao) tự cập nhật, âm báo phiếu mới, cảnh báo đơn bị hủy;
+  in phiếu bếp 80mm không có giá.
 - **Chấm công:** nhân viên bấm Vào ca / Ra ca ngay trên thanh tiêu đề; lương theo giờ chốt lúc vào ca; bảng công
   tổng giờ và lương tạm tính theo tháng, cảnh báo quên ra ca; quản lý sửa giờ phải ghi lý do.
 - **Đơn hàng & trả hàng:** hủy đơn trong ngày, trả hàng trong thời hạn cấu hình (mặc định 7 ngày),
@@ -142,6 +145,15 @@ Chỉ Caddy mở cổng ra ngoài.
   khôi phục: `./scripts/restore_db.sh backups/<file>.dump`.
 
 CI build image và chạy thử cả cụm cho mỗi lần push (kiểm tra trang, API, header, cổng không mở, sao lưu).
+
+## In phiếu bếp không cần bấm hộp thoại in
+
+Trình duyệt luôn hỏi trước khi in. Ở máy quầy / máy bếp có máy in nhiệt 80mm làm máy in mặc định, mở Chrome với cờ
+`--kiosk-printing` để bấm "In phiếu bếp" là in thẳng:
+
+```powershell
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing http://localhost:5173/kitchen
+```
 
 ## Quên mật khẩu
 

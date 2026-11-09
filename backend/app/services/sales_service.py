@@ -22,6 +22,7 @@ from app.models import (
     Customer,
     Inventory,
     ItemCondition,
+    KitchenStatus,
     OrderStatus,
     Payment,
     PaymentMethod,
@@ -32,6 +33,7 @@ from app.models import (
     SalesOrderItemComponent,
     SalesReturn,
     SalesReturnItem,
+    ServiceType,
     TransactionType,
     User,
 )
@@ -142,6 +144,9 @@ def to_summary(order: SalesOrder, returned: dict[int, Returned]) -> OrderSummary
         total_amount=order.total_amount,
         item_count=len(order.items),
         payment_method=payment_method_of(order),
+        service_type=order.service_type,
+        table_label=order.table_label,
+        queue_number=order.queue_number,
         created_by=order.creator,
         created_at=order.created_at,
     )
@@ -163,6 +168,8 @@ def to_out(db: Session, order: SalesOrder, include_cost: bool) -> OrderOut:
             "id": item.id,
             "product_id": item.product_id,
             "is_dish": bool(item.components),
+            "note": item.note,
+            "kitchen_status": item.kitchen_status,
             "sku": item.sku,
             "product_name": item.product_name,
             "unit": item.unit,
@@ -456,6 +463,8 @@ def create_order(
         )
 
     payment_rows = _payment_rows(data, total, actor.id)
+    has_dish = any(products[item.product_id].kind == ProductKind.DISH for item in data.items)
+    service_type = data.service_type or (ServiceType.TAKEAWAY if has_dish else None)
 
     # Bắt buộc có ca đang mở (khóa chia sẻ: không chặn thu ngân khác, nhưng đóng ca phải chờ đơn này xong)
     shift = shift_service.open_shift_for_money(db)
@@ -486,6 +495,10 @@ def create_order(
         total_amount=total,
         note=data.note,
         shift_id=shift.id,
+        service_type=service_type,
+        table_label=data.table_label,
+        # Số gọi khách đánh lại mỗi ngày; cấp trong transaction → đơn lỗi thì số được trả lại
+        queue_number=code_gen.next_value(db, "QUEUE", vn_today().strftime("%Y%m%d")) if has_dish else None,
         created_by=actor.id,
     )
     for item, line_subtotal, allocated in zip(
@@ -503,6 +516,9 @@ def create_order(
             discount_allocated=allocated,
             line_total=line_subtotal - allocated,
             unit_cost=inventories[product.id].avg_cost if product.kind != ProductKind.DISH else Decimal("0"),
+            note=item.note,
+            # Món ăn vào hàng chờ của bếp; hàng hóa đưa luôn tại quầy
+            kitchen_status=KitchenStatus.NEW if product.kind == ProductKind.DISH else None,
         )
         if product.kind == ProductKind.DISH:
             # Giá vốn món = Σ(định lượng × giá vốn bình quân của nguyên liệu, đọc trên dòng tồn đã khóa).

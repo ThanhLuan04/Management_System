@@ -33,6 +33,8 @@ const MILK = {
 };
 
 const WATER = { ...MILK, id: 8, sku: "NUOC-500", barcode: null, name: "Nước suối 500ml", unit: "chai", sale_price: "5000.00", quantity: 0 };
+// Món ăn: "tồn" là số phần còn làm được từ nguyên liệu
+const PHO = { ...MILK, id: 9, sku: "PHOBO", barcode: null, name: "Phở bò", kind: "DISH" as const, unit: "tô", sale_price: "50000.00", quantity: 6 };
 
 const SHIFT = {
   id: 9,
@@ -86,7 +88,7 @@ vi.mock("@/services/http", () => ({
       if (url === "/settings") {
         return { data: { store_name: "SmartStore", store_address: "", store_phone: "", return_window_days: 7, my_max_discount_percent: "10" } };
       }
-      if (url === "/products") return { data: { items: [MILK, WATER], page: 1, page_size: 8, total: 2 } };
+      if (url === "/products") return { data: { items: [MILK, WATER, PHO], page: 1, page_size: 8, total: 3 } };
       if (url === "/shifts/current") return { data: { shift: SHIFT, suggested_opening_cash: "500000.00" } };
       if (url === "/categories") return { data: [{ id: 1, name: "Sữa", parent_id: null, is_active: true, children: [] }] };
       throw new Error(`unexpected GET ${url}`);
@@ -141,6 +143,50 @@ describe("PosPage — lưới sản phẩm", () => {
     await vi.waitFor(() =>
       expect(vi.mocked(http.get)).toHaveBeenCalledWith("/products", { params: expect.objectContaining({ category_id: 1 }) }),
     );
+  });
+});
+
+describe("PosPage — quán ăn", () => {
+  it("dish lines take a kitchen note and dine-in needs a table number", async () => {
+    const order = {
+      ...ORDER,
+      queue_number: 12,
+      service_type: "DINE_IN",
+      table_label: "Bàn 5",
+      items: [{ id: 1, product_id: 9, product_name: "Phở bò", quantity: 2, note: "không hành", is_dish: true, kitchen_status: "NEW" }],
+    };
+    vi.mocked(http.post).mockImplementationOnce(async () => ({ data: order }));
+    renderPos();
+    const pho = await screen.findByRole("button", { name: /^Thêm Phở bò.*còn 6 phần/ });
+    await userEvent.click(pho);
+    await userEvent.click(pho);
+
+    // Ghi chú cho bếp chỉ có ở món ăn
+    await userEvent.click(screen.getByRole("button", { name: "Ghi chú cho bếp: Phở bò" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Ghi chú cho bếp: Phở bò" }), "không hành{Enter}");
+    expect(screen.getByLabelText("Số lượng Phở bò (không hành)")).toHaveValue("2");
+    await userEvent.click(pho); // thêm tiếp → dòng mới không ghi chú
+    expect(screen.getByLabelText("Số lượng Phở bò")).toHaveValue("1");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Tại chỗ" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Thẻ" }));
+    await userEvent.click(screen.getByRole("button", { name: "Thanh toán (F9)" }));
+    expect(await screen.findByText("Nhập số bàn để mang món ra")).toBeInTheDocument();
+    expect(orderCalls()).toHaveLength(0);
+
+    await userEvent.type(screen.getByLabelText(/Số bàn/), "Bàn 5");
+    await userEvent.click(screen.getByRole("button", { name: "Thanh toán (F9)" }));
+
+    expect(await screen.findByText(/Số thứ tự:/)).toHaveTextContent("12 · Bàn 5");
+    expect(screen.getByRole("button", { name: /In phiếu bếp/ })).toBeInTheDocument();
+    expect(orderCalls()[0][1]).toMatchObject({
+      items: [
+        { product_id: 9, quantity: 2, note: "không hành" },
+        { product_id: 9, quantity: 1 },
+      ],
+      service_type: "DINE_IN",
+      table_label: "Bàn 5",
+    });
   });
 });
 

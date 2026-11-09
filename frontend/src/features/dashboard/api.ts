@@ -24,6 +24,11 @@ export interface OrderSummary {
   total_amount: Money;
   item_count: number;
   payment_method: string | null;
+  service_type: "DINE_IN" | "TAKEAWAY" | null;
+  /** Số bàn (ăn tại chỗ) */
+  table_label: string | null;
+  /** Số thứ tự trong ngày để gọi khách — chỉ đơn có món ăn */
+  queue_number: number | null;
   created_by: UserRef;
   created_at: string;
 }

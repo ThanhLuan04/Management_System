@@ -33,6 +33,10 @@ class OrderItemIn(StrictModel):
 
     product_id: int
     quantity: Annotated[int, Field(ge=1, le=10_000)]
+    note: Annotated[
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None,
+        BeforeValidator(empty_to_none),
+    ] = Field(None, description="Ghi chú món cho bếp, vd. 'không hành'")
 
 
 class DiscountIn(StrictModel):
@@ -96,13 +100,29 @@ class OrderCreate(StrictModel):
     note: Annotated[
         Annotated[str, StringConstraints(max_length=500)] | None, BeforeValidator(empty_to_none)
     ] = None
+    service_type: Literal["DINE_IN", "TAKEAWAY"] | None = Field(
+        None, description="Đơn có món ăn: mặc định mang đi"
+    )
+    table_label: Annotated[
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=20)] | None,
+        BeforeValidator(empty_to_none),
+    ] = Field(None, description="Số bàn — bắt buộc khi ăn tại chỗ")
 
     @field_validator("items")
     @classmethod
     def unique_products(cls, items: list[OrderItemIn]) -> list[OrderItemIn]:
-        if len({item.product_id for item in items}) != len(items):
-            raise ValueError("Mỗi sản phẩm chỉ xuất hiện một dòng trong đơn (hãy tăng số lượng)")
+        # Cùng món khác ghi chú được tách dòng ("phở" + "phở không hành"); cùng món cùng ghi chú thì gộp số lượng
+        if len({(item.product_id, item.note) for item in items}) != len(items):
+            raise ValueError(
+                "Mỗi sản phẩm (cùng ghi chú) chỉ xuất hiện một dòng trong đơn (hãy tăng số lượng)"
+            )
         return items
+
+    @model_validator(mode="after")
+    def table_for_dine_in(self) -> "OrderCreate":
+        if self.service_type == "DINE_IN" and not self.table_label:
+            raise ValueError("Ăn tại chỗ cần nhập số bàn")
+        return self
 
     @field_validator("payments")
     @classmethod
@@ -141,6 +161,10 @@ class OrderItemOut(BaseModel):
     returned_quantity: int = Field(description="Tổng số đã trả qua các phiếu trả")
     returnable_quantity: int = Field(description="Số còn được trả (0 nếu đơn đã hủy)")
     is_dish: bool = Field(description="Món chế biến: đã trừ nguyên liệu, trả lại không nhập kho")
+    note: str | None = Field(description="Ghi chú món cho bếp")
+    kitchen_status: Literal["NEW", "COOKING", "READY", "SERVED"] | None = Field(
+        description="Trạng thái ở bếp (null: hàng hóa, không qua bếp)"
+    )
     unit_cost: Decimal | None = Field(None, description=_COST_NOTE)
 
 
@@ -177,6 +201,9 @@ class OrderSummaryOut(BaseModel):
     total_amount: Decimal
     item_count: int
     payment_method: str | None
+    service_type: Literal["DINE_IN", "TAKEAWAY"] | None
+    table_label: str | None
+    queue_number: int | None = Field(description="Số thứ tự trong ngày để gọi khách (đơn có món ăn)")
     created_by: UserRef
     created_at: datetime
 

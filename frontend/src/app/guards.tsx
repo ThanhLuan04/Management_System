@@ -42,7 +42,7 @@ export function RequirePermission({ permission, children }: { permission: Permis
 /** Trang chủ theo vai trò: Thu ngân → Bán hàng, Nhân viên bếp → Chấm công, Admin / Quản lý → Tổng quan. */
 export function homePath(user: Pick<Me, "role">): string {
   if (user.role.code === "CASHIER") return "/pos";
-  if (user.role.code === "KITCHEN") return "/attendance";
+  if (user.role.code === "KITCHEN") return "/kitchen";
   return "/dashboard";
 }
 

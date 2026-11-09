@@ -190,6 +190,25 @@ body {
   .print-root {
     display: block;
   }
+  /* Hóa đơn và phiếu bếp cùng có mặt khi in: mặc định in hóa đơn, in phiếu bếp khi body có data-print="kitchen" */
+  body[data-print="kitchen"] .print-root:not(.print-kitchen),
+  body:not([data-print="kitchen"]) .print-root.print-kitchen {
+    display: none;
+  }
+  .receipt-big {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .receipt-item {
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .receipt-note {
+    font-size: 13px;
+    font-style: italic;
+    padding-left: 12px;
+  }
   .receipt {
     width: 72mm;
     font: 12px/1.4 "Be Vietnam Pro", system-ui, sans-serif;

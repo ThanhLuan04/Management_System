@@ -15,6 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +27,23 @@ from app.models.user import User
 class OrderStatus:
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+
+
+class ServiceType:
+    DINE_IN = "DINE_IN"  # ăn tại chỗ — ghi số bàn để mang món ra
+    TAKEAWAY = "TAKEAWAY"  # mang đi — gọi khách theo số thứ tự
+
+
+class KitchenStatus:
+    """Trạng thái từng dòng món ở bếp. Hàng hóa (không phải món) không vào bếp → NULL."""
+
+    NEW = "NEW"
+    COOKING = "COOKING"
+    READY = "READY"
+    SERVED = "SERVED"
+
+    FLOW = (NEW, COOKING, READY, SERVED)
+    ACTIVE = (NEW, COOKING, READY)  # còn hiện trên màn hình bếp
 
 
 class PaymentMethod:
@@ -50,6 +68,10 @@ class SalesOrder(Base):
         CheckConstraint("discount_amount >= 0 AND discount_amount <= subtotal", name="discount_valid"),
         CheckConstraint("total_amount = subtotal - discount_amount", name="total_consistent"),
         CheckConstraint("(status = 'CANCELLED') = (cancelled_at IS NOT NULL)", name="cancelled_consistent"),
+        CheckConstraint(
+            "service_type IS NULL OR service_type IN ('DINE_IN', 'TAKEAWAY')", name="service_type_valid"
+        ),
+        CheckConstraint("queue_number IS NULL OR queue_number > 0", name="queue_number_positive"),
         Index("ix_sales_orders_created_at", "created_at"),
         Index("ix_sales_orders_status_created", "status", "created_at"),
         Index("ix_sales_orders_customer_created", "customer_id", "created_at"),
@@ -72,6 +94,12 @@ class SalesOrder(Base):
     note: Mapped[str | None] = mapped_column(String(500))
     # Ca bán đơn này (trống với đơn tạo trước khi có tính năng ca làm việc)
     shift_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("cash_shifts.id"), index=True)
+    # Đơn có món ăn: hình thức phục vụ, số bàn (ăn tại chỗ) và số thứ tự trong ngày để gọi khách
+    service_type: Mapped[str | None] = mapped_column(String(10))
+    table_label: Mapped[str | None] = mapped_column(String(20))
+    queue_number: Mapped[int | None] = mapped_column(Integer)
+    # Đơn bị hủy khi bếp đang làm: phiếu hiện "ĐÃ HỦY" trên màn hình bếp đến khi bếp bấm "Đã biết"
+    kitchen_cancel_ack_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -99,7 +127,6 @@ class SalesOrderItem(Base):
 
     __tablename__ = "sales_order_items"
     __table_args__ = (
-        UniqueConstraint("sales_order_id", "product_id", name="uq_sales_order_items_order_product"),
         CheckConstraint("quantity > 0", name="quantity_positive"),
         CheckConstraint("unit_price >= 0", name="unit_price_non_negative"),
         CheckConstraint("line_subtotal = quantity * unit_price", name="line_subtotal_consistent"),
@@ -108,11 +135,22 @@ class SalesOrderItem(Base):
         ),
         CheckConstraint("line_total = line_subtotal - discount_allocated", name="line_total_consistent"),
         CheckConstraint("unit_cost >= 0", name="unit_cost_non_negative"),
+        CheckConstraint(
+            "kitchen_status IS NULL OR kitchen_status IN ('NEW', 'COOKING', 'READY', 'SERVED')",
+            name="kitchen_status_valid",
+        ),
+        # Màn hình bếp chỉ đọc các dòng món chưa giao → chỉ mục một phần, rất nhỏ
+        Index(
+            "ix_sales_order_items_kitchen_active",
+            "sales_order_id",
+            postgresql_where=text("kitchen_status IN ('NEW', 'COOKING', 'READY')"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    # Một sản phẩm có thể nằm ở nhiều dòng nếu khác ghi chú ("phở" và "phở không hành")
     sales_order_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("sales_orders.id", ondelete="CASCADE"), nullable=False
+        BigInteger, ForeignKey("sales_orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     product_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("products.id"), nullable=False, index=True)
     product_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -124,6 +162,9 @@ class SalesOrderItem(Base):
     discount_allocated: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(15, 4), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(200))
+    kitchen_status: Mapped[str | None] = mapped_column(String(10))
+    kitchen_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     order: Mapped[SalesOrder] = relationship(back_populates="items")
     # Dòng món ăn: nguyên liệu THỰC SỰ đã trừ (ảnh chụp công thức lúc bán) — hủy đơn hoàn lại đúng lượng này

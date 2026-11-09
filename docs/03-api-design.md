@@ -102,6 +102,19 @@ Quên mật khẩu Admin khi chưa có email: chạy `python -m scripts.reset_pa
 
 `POST /orders`, `POST /orders/{id}/returns`, `POST /orders/{id}/cancel` trả `409 NO_OPEN_SHIFT` khi chưa mở ca.
 
+### Bếp (bổ sung sau MVP)
+
+| Method | URL | Mô tả | Quyền |
+|---|---|---|---|
+| GET | `/kitchen/tickets` | Phiếu còn món chưa giao (cũ nhất trước) + phiếu bị hủy chưa xác nhận; chỉ gồm dòng món ăn | A M C K |
+| PATCH | `/kitchen/items/{id}` | Đổi trạng thái một món `{status}` — tới / lùi đúng một bước, sai → `409 INVALID_KITCHEN_TRANSITION` | A M C K |
+| POST | `/kitchen/tickets/{order_id}/status` | Cả phiếu `{status}`: đưa mọi món chưa tới bước đó lên bước đó | A M C K |
+| POST | `/kitchen/tickets/{order_id}/acknowledge` | Bếp đã biết đơn bị hủy → ẩn phiếu | A M C K |
+
+`POST /orders` nhận thêm `service_type` (`DINE_IN` / `TAKEAWAY`, đơn có món mặc định `TAKEAWAY`), `table_label` (bắt buộc khi `DINE_IN`)
+và `items[].note`. Đơn trả về có `service_type`, `table_label`, `queue_number` (số thứ tự trong ngày, chỉ đơn có món); dòng đơn có `note`, `kitchen_status`.
+Đổi trạng thái món của đơn đã hủy: `409 ORDER_CANCELLED`.
+
 ### Chấm công (bổ sung sau MVP)
 
 K = Kitchen (Nhân viên bếp).

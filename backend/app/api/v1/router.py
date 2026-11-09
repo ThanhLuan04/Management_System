@@ -6,6 +6,7 @@ from app.api.v1 import (
     catalog,
     health,
     inventory,
+    kitchen,
     orders,
     partners,
     products,
@@ -30,5 +31,6 @@ api_router.include_router(orders.router)
 api_router.include_router(returns.router)
 api_router.include_router(shifts.router)
 api_router.include_router(attendance.router)
+api_router.include_router(kitchen.router)
 api_router.include_router(reports.router)
 api_router.include_router(system.router)

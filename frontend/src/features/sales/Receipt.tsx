@@ -18,6 +18,7 @@ export function PrintableReceipt({ order, store }: { order: Order; store?: Store
         {store?.store_address && <p className="receipt-center">{store.store_address}</p>}
         {store?.store_phone && <p className="receipt-center">ĐT: {store.store_phone}</p>}
         <p className="receipt-center receipt-title">HÓA ĐƠN BÁN HÀNG</p>
+        {order.queue_number !== null && <p className="receipt-center receipt-big">Số {order.queue_number}</p>}
         <p>Số: {order.code}</p>
         <p>Ngày: {formatDateTime(order.created_at)}</p>
         <p>Thu ngân: {order.created_by.full_name}</p>
@@ -25,7 +26,10 @@ export function PrintableReceipt({ order, store }: { order: Order; store?: Store
         <hr />
         {order.items.map((item) => (
           <div key={item.id} className="receipt-line">
-            <p>{item.product_name}</p>
+            <p>
+              {item.product_name}
+              {item.note && ` (${item.note})`}
+            </p>
             <p className="receipt-row">
               <span>
                 {formatNumber(item.quantity)} × {formatMoney(item.unit_price)}

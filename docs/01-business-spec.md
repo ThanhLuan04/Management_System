@@ -49,6 +49,7 @@ Quyền được định nghĩa bằng mã (permission code) trong backend; mỗ
 | `cost.view` | Xem giá vốn, lợi nhuận | ✅ | ✅ | | |
 | `attendance.self` | Vào / ra ca, xem giờ công và lương tạm tính của mình | ✅ | ✅ | ✅ | ✅ |
 | `attendance.manage` | Bảng công mọi người, thêm / sửa / xóa lượt chấm công | ✅ | ✅ | | |
+| `kitchen.operate` | Màn hình bếp: xem phiếu, đổi trạng thái món, in phiếu bếp | ✅ | ✅ | ✅ | ✅ |
 
 Giới hạn giảm giá trên một đơn: Cashier ≤ **10%**, Manager ≤ **30%**, Admin không giới hạn. Các mức này cấu hình được trong Cài đặt.
 
@@ -231,6 +232,15 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-RC06** "Tồn" hiển thị của món = số phần còn làm được từ nguyên liệu trong kho. Món không có trong danh sách kho, báo cáo tồn, cảnh báo sắp hết, phiếu nhập và phiếu điều chỉnh (`NOT_STOCKED`).
 - **BR-RC07** Hàng hóa và nguyên liệu có thể có **đơn vị nhập** khác đơn vị kho (vd. 1 kg = 1000 g, 1 thùng = 24 lon). Phiếu nhập ghi theo đơn vị nhập (20 kg × 180.000 ₫), kho cộng theo đơn vị kho (20.000 g, giá vốn 180 ₫/g). Quy đổi được chốt vào phiếu lúc lập.
 
+### Bán đồ ăn tại chỗ / mang đi và bếp (bổ sung sau MVP)
+
+- **BR-KT01** Khách trả tiền trước ở quầy. Đơn có món ăn ghi **hình thức**: mang đi (mặc định) hoặc tại chỗ — tại chỗ bắt buộc nhập **số bàn**. Mỗi đơn có món được cấp **số thứ tự trong ngày** (1, 2, 3…, đánh lại mỗi ngày) in trên hóa đơn và phiếu bếp để gọi khách.
+- **BR-KT02** Mỗi dòng món có thể kèm **ghi chú cho bếp** (≤ 200 ký tự, vd. "không hành"). Cùng món khác ghi chú là hai dòng riêng; cùng món cùng ghi chú phải gộp số lượng.
+- **BR-KT03** Chỉ **món ăn** vào bếp; hàng hóa (nước đóng chai…) đưa luôn tại quầy. Thanh toán xong, các dòng món có trạng thái **Chờ**, đi lần lượt **Chờ → Đang làm → Xong → Đã giao** — chỉ được tới hoặc lùi một bước (lùi để sửa bấm nhầm). Có thao tác cả phiếu: "Xong cả phiếu", "Giao cả phiếu" (món đã đi xa hơn giữ nguyên).
+- **BR-KT04** Màn hình bếp hiện phiếu còn món chưa giao, cũ nhất trước, kèm số phút đã chờ (vàng ≥ 10 phút, đỏ ≥ 20 phút); tự cập nhật mỗi 5 giây, có âm báo phiếu mới (bật / tắt).
+- **BR-KT05** Đơn bị hủy khi bếp chưa giao xong: phiếu hiện **"ĐÃ HỦY — dừng làm"** kèm lý do, không đổi trạng thái món được nữa (`ORDER_CANCELLED`), đến khi bếp bấm **"Đã biết"**. Đơn đã giao hết rồi mới hủy thì không làm phiền bếp.
+- **BR-KT06** Phiếu bếp in khổ 80mm khi bấm nút (ở quầy sau thanh toán và trên màn hình bếp): số thứ tự, hình thức, số bàn, món, số lượng, ghi chú — **không có giá tiền**.
+
 ### Chấm công (bổ sung sau MVP)
 
 - **BR-AT01** Mỗi nhân viên tự bấm **Vào ca / Ra ca**; mỗi người chỉ có **một lượt đang mở** (database chặn lượt thứ hai: `ALREADY_CLOCKED_IN`). Chấm công độc lập với ca két tiền.
@@ -292,6 +302,7 @@ Mọi lỗi trả về cùng định dạng:
 | `OUT_OF_STOCK` | 409 | Không đủ tồn |
 | `INSUFFICIENT_INGREDIENTS` | 409 | Không đủ nguyên liệu để làm món (`details`: tên, `required`, `available`) |
 | `RECIPE_MISSING` / `PRODUCT_NOT_SELLABLE` | 409 | Bán món chưa có công thức / bán nguyên liệu ở quầy |
+| `ORDER_CANCELLED` / `INVALID_KITCHEN_TRANSITION` | 409 | Đổi trạng thái món của đơn đã hủy / nhảy cóc trạng thái |
 | `NOT_A_DISH` / `NOT_STOCKED` | 409 | Đặt công thức cho sản phẩm không phải món / điều chỉnh kho cho món |
 | `DISCOUNT_EXCEEDS_LIMIT` | 403 | Giảm giá vượt quyền |
 | `INSUFFICIENT_PAYMENT` | 422 | Tiền khách đưa < tổng tiền |

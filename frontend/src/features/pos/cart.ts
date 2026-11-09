@@ -7,6 +7,8 @@ import type { Product } from "@/features/catalog/api";
 export interface CartLine {
   product: Product;
   quantity: number;
+  /** Ghi chú cho bếp ("không hành"); "" = không ghi chú. Cùng món khác ghi chú là hai dòng riêng. */
+  note: string;
 }
 
 export type DiscountType = "PERCENT" | "AMOUNT";
@@ -19,16 +21,41 @@ export interface Discount {
 
 const price = (line: CartLine) => Math.round(Number(line.product.sale_price));
 
+/** Khóa của dòng giỏ hàng: sản phẩm + ghi chú (giống ràng buộc ở backend). */
+export const lineKey = (line: Pick<CartLine, "product" | "note">) => `${line.product.id}|${line.note}`;
+
 export function addToCart(cart: CartLine[], product: Product, quantity = 1): CartLine[] {
-  const index = cart.findIndex((l) => l.product.id === product.id);
-  if (index === -1) return [...cart, { product, quantity }];
+  // Bấm / quét thêm luôn cộng vào dòng KHÔNG ghi chú; dòng có ghi chú chỉ tạo khi sửa ghi chú
+  const index = cart.findIndex((l) => l.product.id === product.id && l.note === "");
+  if (index === -1) return [...cart, { product, quantity, note: "" }];
   // Cập nhật thông tin sản phẩm mới nhất (tồn kho, giá) khi quét lại
-  return cart.map((l, i) => (i === index ? { product, quantity: l.quantity + quantity } : l));
+  return cart.map((l, i) => (i === index ? { ...l, product, quantity: l.quantity + quantity } : l));
 }
 
-export function setQuantity(cart: CartLine[], productId: number, quantity: number): CartLine[] {
-  if (quantity <= 0) return cart.filter((l) => l.product.id !== productId);
-  return cart.map((l) => (l.product.id === productId ? { ...l, quantity: Math.min(quantity, 10_000) } : l));
+export function setQuantity(cart: CartLine[], key: string, quantity: number): CartLine[] {
+  if (quantity <= 0) return cart.filter((l) => lineKey(l) !== key);
+  return cart.map((l) => (lineKey(l) === key ? { ...l, quantity: Math.min(quantity, 10_000) } : l));
+}
+
+/** Đổi ghi chú một dòng; nếu đã có dòng cùng món cùng ghi chú thì gộp số lượng vào dòng đó. */
+export function setNote(cart: CartLine[], key: string, note: string): CartLine[] {
+  const line = cart.find((l) => lineKey(l) === key);
+  const normalized = note.trim().slice(0, 200);
+  if (!line || normalized === line.note) return cart;
+  const targetKey = lineKey({ product: line.product, note: normalized });
+  if (cart.some((l) => lineKey(l) === targetKey)) {
+    return cart
+      .filter((l) => lineKey(l) !== key)
+      .map((l) => (lineKey(l) === targetKey ? { ...l, quantity: Math.min(l.quantity + line.quantity, 10_000) } : l));
+  }
+  return cart.map((l) => (lineKey(l) === key ? { ...l, note: normalized } : l));
+}
+
+/** Tổng số lượng theo sản phẩm (một món có thể nằm ở nhiều dòng khác ghi chú) — để so với tồn kho. */
+export function quantityByProduct(cart: CartLine[]): Record<number, number> {
+  const totals: Record<number, number> = {};
+  for (const l of cart) totals[l.product.id] = (totals[l.product.id] ?? 0) + l.quantity;
+  return totals;
 }
 
 export function lineSubtotal(line: CartLine): number {

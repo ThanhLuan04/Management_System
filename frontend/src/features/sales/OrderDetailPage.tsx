@@ -14,7 +14,7 @@ import { P } from "@/features/auth/permissions";
 import { toApiError } from "@/services/apiError";
 import { formatDate, formatDateTime, formatMoney, formatNumber, vnToday } from "@/utils/format";
 
-import { useCancelOrder, useOrder, useStoreSettings } from "./api";
+import { KITCHEN_LABELS, SERVICE_LABELS, useCancelOrder, useOrder, useStoreSettings } from "./api";
 import { OrderStatusBadge, PAYMENT_METHOD_LABELS } from "./OrderStatusBadge";
 import { PrintableReceipt } from "./Receipt";
 import { ReturnDialog } from "./ReturnDialog";
@@ -93,6 +93,13 @@ export function OrderDetailPage() {
                   {o.customer ? <Link to={`/customers/${o.customer.id}`} className="text-primary hover:underline">{o.customer.name}</Link> : "Khách lẻ"}
                 </Row>
                 <Row label="Thu ngân">{o.created_by.full_name}</Row>
+                {o.service_type && (
+                  <Row label="Hình thức">
+                    {SERVICE_LABELS[o.service_type]}
+                    {o.table_label && ` · ${o.table_label}`}
+                    {o.queue_number !== null && ` · số ${o.queue_number}`}
+                  </Row>
+                )}
                 {o.note && <Row label="Ghi chú">{o.note}</Row>}
                 {o.cancelled_at && (
                   <>
@@ -166,7 +173,9 @@ export function OrderDetailPage() {
                         <span className="block text-xs text-muted">
                           {i.sku}
                           {i.unit_cost !== undefined && ` · giá vốn ${formatMoney(i.unit_cost)}`}
+                          {i.kitchen_status && ` · bếp: ${KITCHEN_LABELS[i.kitchen_status]}`}
                         </span>
+                        {i.note && <span className="block text-xs font-medium text-warning-strong">→ {i.note}</span>}
                       </td>
                       <td className="px-3 py-2.5 text-right">{formatNumber(i.quantity)}</td>
                       <td className="px-3 py-2.5 text-right">{formatMoney(i.unit_price)}</td>

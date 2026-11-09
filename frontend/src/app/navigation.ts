@@ -3,6 +3,7 @@ import {
   BarChart3,
   Boxes,
   CalendarClock,
+  ChefHat,
   ClipboardList,
   Clock,
   FolderTree,
@@ -43,6 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Bán hàng",
     items: [
       { to: "/pos", label: "Bán hàng", icon: ShoppingCart, permission: P.ORDERS_CREATE },
+      { to: "/kitchen", label: "Bếp", icon: ChefHat, permission: P.KITCHEN_OPERATE },
       { to: "/orders", label: "Đơn hàng", icon: ClipboardList, permission: P.ORDERS_VIEW },
       { to: "/returns", label: "Trả hàng", icon: Undo2, permission: P.ORDERS_VIEW },
       { to: "/shifts", label: "Ca làm việc", icon: Clock, permission: P.REPORTS_VIEW },

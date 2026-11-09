@@ -49,6 +49,11 @@ _DEFAULT_PASSWORD_HASH = hash_password(DEFAULT_PASSWORD)
 def _migrated_database():
     """Dựng lại schema từ đầu bằng chính migration — đồng thời kiểm tra downgrade/upgrade chạy được."""
     config = Config(str(BACKEND_DIR / "alembic.ini"))
+    # Dữ liệu còn lại từ test cuối của phiên trước (vd. user vai trò Bếp) sẽ chặn downgrade xóa dữ liệu seed
+    # (role KITCHEN đang được dùng) → dọn trước. CASCADE dọn luôn mọi bảng tham chiếu tới users.
+    with engine.begin() as conn:
+        if conn.scalar(text("SELECT to_regclass('public.users')")) is not None:
+            conn.execute(text("TRUNCATE users CASCADE"))
     command.downgrade(config, "base")
     command.upgrade(config, "head")
     yield

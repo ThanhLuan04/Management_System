@@ -6,6 +6,16 @@ import type { Money, Page, UserRef } from "@/types/api";
 
 export type { OrderSummary };
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "CARD";
+export type KitchenStatus = "NEW" | "COOKING" | "READY" | "SERVED";
+export type ServiceType = "DINE_IN" | "TAKEAWAY";
+
+export const SERVICE_LABELS: Record<ServiceType, string> = { DINE_IN: "Tại chỗ", TAKEAWAY: "Mang đi" };
+export const KITCHEN_LABELS: Record<KitchenStatus, string> = {
+  NEW: "Chờ",
+  COOKING: "Đang làm",
+  READY: "Xong",
+  SERVED: "Đã giao",
+};
 
 export interface OrderItem {
   id: number;
@@ -22,6 +32,10 @@ export interface OrderItem {
   returnable_quantity: number;
   /** Món chế biến: đã trừ nguyên liệu lúc bán — trả lại chỉ hoàn tiền, không nhập kho */
   is_dish: boolean;
+  /** Ghi chú món cho bếp */
+  note: string | null;
+  /** Trạng thái ở bếp — null: hàng hóa, không qua bếp */
+  kitchen_status: KitchenStatus | null;
   unit_cost?: Money;
 }
 
@@ -60,7 +74,10 @@ export interface SplitPayment {
 
 export interface OrderPayload {
   customer_id: number | null;
-  items: { product_id: number; quantity: number }[];
+  items: { product_id: number; quantity: number; note?: string | null }[];
+  /** Đơn có món ăn: tại chỗ (kèm số bàn) / mang đi */
+  service_type?: ServiceType;
+  table_label?: string | null;
   discount: { type: "AMOUNT" | "PERCENT"; value: string } | null;
   /** Một phương thức (số tiền = tổng đơn do máy chủ tính) — gửi đúng một trong `payment` / `payments` */
   payment?: { method: PaymentMethod; cash_received?: string; reference_note?: string | null };
