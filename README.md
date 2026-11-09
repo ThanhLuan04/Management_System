@@ -159,6 +159,13 @@ cd backend
 .\.venv\Scripts\python.exe -m scripts.setup_food_store            # thêm --no-opening-stock nếu tự nhập kho
 ```
 
+Dọn dữ liệu demo sau khi thiết lập (xóa vĩnh viễn — sao lưu trước bằng `scripts/backup_db.sh` hoặc `pg_dump`):
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.cleanup_demo_data            # chạy thử: chỉ đếm
+.\.venv\Scripts\python.exe -m scripts.cleanup_demo_data --apply    # xóa thật
+```
+
 ## In phiếu bếp không cần bấm hộp thoại in
 
 Trình duyệt luôn hỏi trước khi in. Ở máy quầy / máy bếp có máy in nhiệt 80mm làm máy in mặc định, mở Chrome với cờ
