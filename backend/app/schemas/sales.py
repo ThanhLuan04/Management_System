@@ -140,6 +140,7 @@ class OrderItemOut(BaseModel):
     line_total: Decimal
     returned_quantity: int = Field(description="Tổng số đã trả qua các phiếu trả")
     returnable_quantity: int = Field(description="Số còn được trả (0 nếu đơn đã hủy)")
+    is_dish: bool = Field(description="Món chế biến: đã trừ nguyên liệu, trả lại không nhập kho")
     unit_cost: Decimal | None = Field(None, description=_COST_NOTE)
 
 

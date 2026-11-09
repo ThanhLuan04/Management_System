@@ -75,6 +75,7 @@ class PurchaseOrderItem(Base):
             "discount_amount >= 0 AND discount_amount <= quantity * unit_cost", name="discount_valid"
         ),
         CheckConstraint("line_total = quantity * unit_cost - discount_amount", name="line_total_consistent"),
+        CheckConstraint("conversion_factor >= 1", name="conversion_factor_positive"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
@@ -86,6 +87,10 @@ class PurchaseOrderItem(Base):
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False, server_default="0")
     line_total: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    # Số lượng và đơn giá ở trên tính theo đơn vị nhập (vd. kg); nhập kho = quantity × conversion_factor (vd. g).
+    # Chốt lúc lập phiếu để đổi quy đổi của sản phẩm về sau không làm sai phiếu cũ.
+    purchase_unit: Mapped[str | None] = mapped_column(String(20))
+    conversion_factor: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
     purchase_order: Mapped[PurchaseOrder] = relationship(back_populates="items")
     product: Mapped[Product] = relationship(lazy="joined")

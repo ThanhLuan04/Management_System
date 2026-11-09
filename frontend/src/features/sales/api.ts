@@ -20,6 +20,8 @@ export interface OrderItem {
   line_total: Money;
   returned_quantity: number;
   returnable_quantity: number;
+  /** Món chế biến: đã trừ nguyên liệu lúc bán — trả lại chỉ hoàn tiền, không nhập kho */
+  is_dish: boolean;
   unit_cost?: Money;
 }
 

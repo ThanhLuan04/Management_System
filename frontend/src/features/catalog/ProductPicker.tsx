@@ -20,13 +20,22 @@ interface ProductPickerProps {
   activeOnly?: boolean;
   autoFocus?: boolean;
   label?: string;
+  /** Lọc thêm theo loại: { sellable: true } ở quầy, { stocked: true } khi nhập / kiểm kê */
+  filter?: { sellable?: boolean; stocked?: boolean };
 }
 
 /**
  * Ô tìm & chọn sản phẩm (combobox): gõ tên/SKU/mã vạch, ↑↓ để di chuyển, Enter để chọn, Esc để đóng.
  * Máy quét mã vạch gõ mã rồi Enter → nếu mã khớp đúng một sản phẩm thì chọn luôn.
  */
-export function ProductPicker({ onSelect, placeholder, activeOnly = true, autoFocus, label = "Tìm sản phẩm" }: ProductPickerProps) {
+export function ProductPicker({
+  onSelect,
+  placeholder,
+  activeOnly = true,
+  autoFocus,
+  label = "Tìm sản phẩm",
+  filter,
+}: ProductPickerProps) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -35,11 +44,11 @@ export function ProductPicker({ onSelect, placeholder, activeOnly = true, autoFo
   const query = useDebouncedValue(text.trim(), 200);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["products", "picker", query, activeOnly],
+    queryKey: ["products", "picker", query, activeOnly, filter],
     queryFn: async () =>
       (
         await http.get<Page<Product>>("/products", {
-          params: { q: query, page_size: 8, sort: "name", ...(activeOnly ? { is_active: true } : {}) },
+          params: { q: query, page_size: 8, sort: "name", ...(activeOnly ? { is_active: true } : {}), ...filter },
         })
       ).data.items,
     enabled: query.length > 0,

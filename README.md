@@ -30,6 +30,9 @@ Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](doc
   gợi ý tiền khách đưa, in hóa đơn 80mm, phím tắt F2/F9.
 - **Ca làm việc (két chung):** mở ca với tiền đầu ca, mọi giao dịch tiền gắn vào ca, đóng ca đếm két — hệ thống tính
   tiền mặt phải có và chênh lệch (lệch phải ghi lý do); lịch sử ca với doanh số từng thu ngân.
+- **Quán ăn — công thức định lượng:** sản phẩm chia hàng hóa / món ăn / nguyên liệu; bán món tự trừ nguyên liệu
+  theo công thức (thiếu thì chặn và báo rõ), giá vốn và % chi phí nguyên liệu của từng món; hủy đơn hoàn đúng
+  lượng đã trừ; nhập nguyên liệu theo kg, kho tính theo g.
 - **Chấm công:** nhân viên bấm Vào ca / Ra ca ngay trên thanh tiêu đề; lương theo giờ chốt lúc vào ca; bảng công
   tổng giờ và lương tạm tính theo tháng, cảnh báo quên ra ca; quản lý sửa giờ phải ghi lý do.
 - **Đơn hàng & trả hàng:** hủy đơn trong ngày, trả hàng trong thời hạn cấu hình (mặc định 7 ngày),

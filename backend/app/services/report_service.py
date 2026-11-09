@@ -24,6 +24,7 @@ from app.models import (
     OrderStatus,
     Payment,
     Product,
+    ProductKind,
     PurchaseOrder,
     PurchaseOrderItem,
     PurchaseStatus,
@@ -51,6 +52,7 @@ from app.schemas.report import (
 )
 from app.services import sales_service
 from app.services.pricing import round_money
+from app.services.product_service import low_stock_condition
 from app.utils.time import vn_day_range, vn_today
 
 ZERO = Decimal("0")
@@ -230,12 +232,13 @@ def inventory_report(db: Session, *, low_stock: bool, include_inactive: bool) ->
         select(Product, Inventory, Category.name)
         .join(Inventory, Inventory.product_id == Product.id)
         .join(Category, Category.id == Product.category_id)
+        .where(Product.kind != ProductKind.DISH)  # món ăn: giá trị tồn nằm ở nguyên liệu
         .order_by(Product.name)
     )
     if not include_inactive:
         stmt = stmt.where(Product.is_active.is_(True))
     if low_stock:
-        stmt = stmt.where(Product.is_active.is_(True), Inventory.quantity <= Product.min_stock)
+        stmt = stmt.where(low_stock_condition())
 
     items = []
     for product, inventory, category_name in db.execute(stmt).unique():
@@ -323,7 +326,7 @@ def dashboard(db: Session, date_from: date, date_to: date, group_by: str) -> Das
     low_stock_rows = db.execute(
         select(Product.id, Product.sku, Product.name, Inventory.quantity, Product.min_stock)
         .join(Inventory, Inventory.product_id == Product.id)
-        .where(Product.is_active.is_(True), Inventory.quantity <= Product.min_stock)
+        .where(low_stock_condition())
         .order_by(Inventory.quantity, Product.name)
     ).all()
     recent = list(db.scalars(select(SalesOrder).order_by(SalesOrder.created_at.desc()).limit(10)).unique())

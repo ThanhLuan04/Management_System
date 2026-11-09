@@ -12,6 +12,7 @@ from app.models import (
     Inventory,
     InventoryTransaction,
     Product,
+    ProductKind,
     PurchaseOrder,
     SalesOrder,
     SalesReturn,
@@ -31,7 +32,7 @@ from app.schemas.inventory import (
 )
 from app.services import audit_service, code_gen, inventory_ops
 from app.services.pricing import round_money
-from app.services.product_service import get_product, search_condition
+from app.services.product_service import get_product, low_stock_condition, search_condition
 from app.utils.pagination import apply_sort, paginate
 from app.utils.time import vn_day_range, vn_today
 
@@ -68,7 +69,12 @@ def list_inventory(
     sort: str | None,
     include_cost: bool,
 ) -> tuple[list[InventoryItemOut], int]:
-    stmt = select(Product).join(Inventory, Inventory.product_id == Product.id)
+    # Món ăn không có tồn riêng (tồn nằm ở nguyên liệu) → không hiện trong danh sách kho
+    stmt = (
+        select(Product)
+        .join(Inventory, Inventory.product_id == Product.id)
+        .where(Product.kind != ProductKind.DISH)
+    )
     if q:
         stmt = stmt.where(search_condition(q))
     if category_id is not None:
@@ -79,7 +85,7 @@ def list_inventory(
     if is_active is not None:
         stmt = stmt.where(Product.is_active.is_(is_active))
     if low_stock:
-        stmt = stmt.where(Product.is_active.is_(True), Inventory.quantity <= Product.min_stock)
+        stmt = stmt.where(low_stock_condition())
     if out_of_stock:
         stmt = stmt.where(Inventory.quantity == 0)
     if not include_cost and sort and sort.lstrip("-") == "stock_value":
@@ -276,6 +282,16 @@ def list_adjustments(
 
 def create_adjustment(db: Session, data: AdjustmentCreate, actor: User, ip: str | None) -> StockAdjustment:
     product_ids = [item.product_id for item in data.items]
+    dishes = list(
+        db.scalars(select(Product.sku).where(Product.id.in_(product_ids), Product.kind == ProductKind.DISH))
+    )
+    if dishes:
+        raise AppError(
+            "NOT_STOCKED",
+            "Món ăn không có tồn kho riêng — hãy điều chỉnh nguyên liệu của món",
+            409,
+            {"skus": dishes},
+        )
     inventories = inventory_ops.lock_inventory(db, product_ids)
 
     # Tính chênh lệch theo tồn ĐÃ KHÓA (không ai đổi được tồn trong lúc này)

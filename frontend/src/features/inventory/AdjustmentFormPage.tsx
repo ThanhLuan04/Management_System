@@ -119,7 +119,7 @@ function AdjustmentForm({ type }: { type: AdjustmentType }) {
         <Card>
           <CardHeader title="Sản phẩm" />
           <CardContent className="space-y-4">
-            <ProductPicker onSelect={addProduct} activeOnly={false} label="Thêm sản phẩm vào phiếu" />
+            <ProductPicker onSelect={addProduct} activeOnly={false} label="Thêm sản phẩm vào phiếu" filter={{ stocked: true }} />
             {lines.length === 0 ? (
               <p className={cn("py-6 text-center text-sm", submitted ? "text-destructive" : "text-muted")}>Chưa có sản phẩm nào trong phiếu.</p>
             ) : (

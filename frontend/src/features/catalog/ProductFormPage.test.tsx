@@ -72,7 +72,46 @@ describe("ProductFormPage", () => {
         brand_id: null,
         barcode: null,
         min_stock: 0,
+        kind: "GOODS",
+        purchase_unit: null,
+        purchase_factor: 1,
       }),
     );
+  });
+
+  it("creates an ingredient bought by the kg and stocked in grams, without a sale price", async () => {
+    renderNewProduct();
+    await userEvent.selectOptions(screen.getByLabelText(/^Loại/), "INGREDIENT");
+    await userEvent.type(screen.getByLabelText(/^SKU/), "bo");
+    await userEvent.type(screen.getByLabelText(/Tên sản phẩm/), "Thịt bò");
+    await userEvent.selectOptions(await screen.findByLabelText(/Danh mục/), "3");
+    await userEvent.type(screen.getByLabelText(/Đơn vị kho/), "g");
+
+    expect(screen.queryByLabelText(/Giá bán/)).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/Đơn vị nhập/), "kg");
+    await userEvent.click(screen.getByRole("button", { name: "Tạo sản phẩm" }));
+    // Có đơn vị nhập mà 1 kg = 1 g → báo lỗi, chưa gửi
+    expect(await screen.findByText("1 đơn vị nhập phải lớn hơn 1 đơn vị kho")).toBeInTheDocument();
+    expect(http.post).not.toHaveBeenCalled();
+
+    const factor = screen.getByLabelText(/1 kg bằng bao nhiêu g/);
+    await userEvent.clear(factor);
+    await userEvent.type(factor, "1000");
+    await userEvent.click(screen.getByRole("button", { name: "Tạo sản phẩm" }));
+
+    await vi.waitFor(() => expect(http.post).toHaveBeenCalled());
+    expect(http.post).toHaveBeenCalledWith(
+      "/products",
+      expect.objectContaining({ kind: "INGREDIENT", unit: "g", sale_price: "0", purchase_unit: "kg", purchase_factor: 1000 }),
+    );
+  });
+
+  it("a dish has no minimum stock or purchase unit", async () => {
+    renderNewProduct();
+    await userEvent.selectOptions(screen.getByLabelText(/^Loại/), "DISH");
+
+    expect(screen.getByLabelText(/Giá bán/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Tồn tối thiểu/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Đơn vị nhập/)).not.toBeInTheDocument();
   });
 });

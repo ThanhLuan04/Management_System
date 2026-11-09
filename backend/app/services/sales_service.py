@@ -20,21 +20,31 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.models import (
     Customer,
+    Inventory,
     ItemCondition,
     OrderStatus,
     Payment,
     PaymentMethod,
     Product,
+    ProductKind,
     SalesOrder,
     SalesOrderItem,
+    SalesOrderItemComponent,
     SalesReturn,
     SalesReturnItem,
     TransactionType,
     User,
 )
 from app.schemas.sales import OrderCreate, OrderItemOut, OrderOut, OrderSummaryOut, PaymentOut
-from app.services import audit_service, code_gen, inventory_ops, settings_service, shift_service
-from app.services.pricing import allocate_discount, discount_percent, order_discount, round_money
+from app.services import (
+    audit_service,
+    code_gen,
+    inventory_ops,
+    recipe_service,
+    settings_service,
+    shift_service,
+)
+from app.services.pricing import allocate_discount, discount_percent, order_discount, round_cost, round_money
 from app.utils.pagination import apply_sort, paginate
 from app.utils.time import utcnow, vn_date_of, vn_day_range, vn_today
 
@@ -152,6 +162,7 @@ def to_out(db: Session, order: SalesOrder, include_cost: bool) -> OrderOut:
         data = {
             "id": item.id,
             "product_id": item.product_id,
+            "is_dish": bool(item.components),
             "sku": item.sku,
             "product_name": item.product_name,
             "unit": item.unit,
@@ -341,6 +352,50 @@ def _payment_rows(data: OrderCreate, total: Decimal, actor_id: int) -> list[Paym
     return rows
 
 
+def _ensure_enough_stock(
+    db: Session,
+    data: OrderCreate,
+    products: dict[int, Product],
+    needs: dict[int, int],
+    inventories: dict[int, Inventory],
+) -> None:
+    short = [pid for pid, need in sorted(needs.items()) if inventories[pid].quantity < need]
+    if not short:
+        return
+    sold_directly = {
+        item.product_id for item in data.items if products[item.product_id].kind != ProductKind.DISH
+    }
+    goods = [
+        {
+            "product_id": pid,
+            "sku": products[pid].sku,
+            "requested": needs[pid],
+            "available": inventories[pid].quantity,
+        }
+        for pid in short
+        if pid in sold_directly
+    ]
+    missing = [
+        {
+            "product_id": pid,
+            "sku": inventories[pid].product.sku,
+            "name": inventories[pid].product.name,
+            "unit": inventories[pid].product.unit,
+            "required": needs[pid],
+            "available": inventories[pid].quantity,
+        }
+        for pid in short
+        if pid not in sold_directly
+    ]
+    db.rollback()
+    if goods:
+        raise AppError("OUT_OF_STOCK", "Không đủ hàng trong kho", 409, goods)
+    listed = ", ".join(
+        f"{m['name']} (cần {m['required']} {m['unit']}, còn {m['available']})" for m in missing[:3]
+    )
+    raise AppError("INSUFFICIENT_INGREDIENTS", f"Không đủ nguyên liệu: {listed}", 409, missing)
+
+
 def create_order(
     db: Session, data: OrderCreate, key: uuid.UUID, actor: User, ip: str | None
 ) -> tuple[SalesOrder, bool]:
@@ -369,6 +424,19 @@ def create_order(
             inactive.append(product.sku)
     if inactive:
         raise AppError("PRODUCT_INACTIVE", "Có sản phẩm đã ngừng kinh doanh", 409, {"skus": inactive})
+    ingredients = [p.sku for p in products.values() if p.kind == ProductKind.INGREDIENT]
+    if ingredients:
+        raise AppError("PRODUCT_NOT_SELLABLE", "Nguyên liệu không bán ở quầy", 409, {"skus": ingredients})
+    no_recipe = [p.sku for p in products.values() if p.kind == ProductKind.DISH and not p.recipe]
+    if no_recipe:
+        raise AppError(
+            "RECIPE_MISSING",
+            "Món chưa có công thức định lượng — khai báo công thức trước khi bán",
+            409,
+            {"skus": no_recipe},
+        )
+    # Lượng cần trừ theo từng sản phẩm có tồn: hàng hóa trừ chính nó, món trừ nguyên liệu (cộng dồn nhiều món)
+    needs = recipe_service.stock_needs([(products[item.product_id], item.quantity) for item in data.items])
 
     line_subtotals = [products[item.product_id].sale_price * item.quantity for item in data.items]
     subtotal = sum(line_subtotals, Decimal("0"))
@@ -392,8 +460,9 @@ def create_order(
     # Bắt buộc có ca đang mở (khóa chia sẻ: không chặn thu ngân khác, nhưng đóng ca phải chờ đơn này xong)
     shift = shift_service.open_shift_for_money(db)
 
-    # 3. Khóa tồn kho (thứ tự product_id tăng dần). Từ đây đến lúc commit, không ai khác bán được các sản phẩm này.
-    inventories = inventory_ops.lock_inventory(db, product_ids)
+    # 3. Khóa tồn kho (thứ tự product_id tăng dần) của hàng hóa và nguyên liệu cần trừ.
+    #    Từ đây đến lúc commit, không ai khác bán được các sản phẩm / dùng được các nguyên liệu này.
+    inventories = inventory_ops.lock_inventory(db, needs)
 
     # 4. Kiểm tra key lần nữa SAU khi có khóa: nếu một request trùng key vừa commit trong lúc ta chờ khóa,
     #    trả về đơn đó thay vì báo "hết hàng" (vì chính đơn đó đã mua món hàng cuối cùng)
@@ -401,19 +470,7 @@ def create_order(
     if existing is not None:
         return _replay(existing, fingerprint, actor), False
 
-    shortages = [
-        {
-            "product_id": item.product_id,
-            "sku": products[item.product_id].sku,
-            "requested": item.quantity,
-            "available": inventories[item.product_id].quantity,
-        }
-        for item in data.items
-        if inventories[item.product_id].quantity < item.quantity
-    ]
-    if shortages:
-        db.rollback()
-        raise AppError("OUT_OF_STOCK", "Không đủ hàng trong kho", 409, shortages)
+    _ensure_enough_stock(db, data, products, needs, inventories)
 
     # 5. Tạo đơn, dòng hàng (lưu giá bán + giá vốn tại thời điểm bán), trừ kho, ghi thanh toán
     order = SalesOrder(
@@ -435,20 +492,36 @@ def create_order(
         data.items, line_subtotals, allocate_discount(line_subtotals, discount_amount), strict=True
     ):
         product = products[item.product_id]
-        order.items.append(
-            SalesOrderItem(
-                product_id=product.id,
-                product_name=product.name,
-                sku=product.sku,
-                unit=product.unit,
-                quantity=item.quantity,
-                unit_price=product.sale_price,
-                line_subtotal=line_subtotal,
-                discount_allocated=allocated,
-                line_total=line_subtotal - allocated,
-                unit_cost=inventories[product.id].avg_cost,
-            )
+        order_item = SalesOrderItem(
+            product_id=product.id,
+            product_name=product.name,
+            sku=product.sku,
+            unit=product.unit,
+            quantity=item.quantity,
+            unit_price=product.sale_price,
+            line_subtotal=line_subtotal,
+            discount_allocated=allocated,
+            line_total=line_subtotal - allocated,
+            unit_cost=inventories[product.id].avg_cost if product.kind != ProductKind.DISH else Decimal("0"),
         )
+        if product.kind == ProductKind.DISH:
+            # Giá vốn món = Σ(định lượng × giá vốn bình quân của nguyên liệu, đọc trên dòng tồn đã khóa).
+            # Lưu lại lượng đã trừ để hủy đơn hoàn đúng lượng này dù công thức đổi về sau.
+            order_item.components = [
+                SalesOrderItemComponent(
+                    product_id=line.ingredient_id,
+                    quantity=line.quantity * item.quantity,
+                    unit_cost=inventories[line.ingredient_id].avg_cost,
+                )
+                for line in product.recipe
+            ]
+            order_item.unit_cost = round_cost(
+                sum(
+                    (line.quantity * inventories[line.ingredient_id].avg_cost for line in product.recipe),
+                    Decimal("0"),
+                )
+            )
+        order.items.append(order_item)
     for row in payment_rows:
         row.shift_id = shift.id
     order.payments.extend(payment_rows)
@@ -463,11 +536,11 @@ def create_order(
             raise
         return _replay(existing, fingerprint, actor), False
 
-    for item in data.items:
+    for product_id, quantity in sorted(needs.items()):
         inventory_ops.issue(
             db,
-            inventories[item.product_id],
-            item.quantity,
+            inventories[product_id],
+            quantity,
             tx_type=TransactionType.SALE,
             reference_type="sales_order",
             reference_id=order.id,
@@ -534,13 +607,19 @@ def cancel_order(db: Session, order_id: int, reason: str, actor: User, ip: str |
     order.cancelled_at = now
     order.cancel_reason = reason
 
-    inventories = inventory_ops.lock_inventory(db, (item.product_id for item in order.items))
-    for item in order.items:
+    # Hàng hóa: hoàn chính nó. Món: hoàn đúng lượng nguyên liệu đã trừ lúc bán (không đọc công thức hiện tại).
+    restock = [
+        (component.product_id, component.quantity, component.unit_cost)
+        for item in order.items
+        for component in item.components
+    ] + [(item.product_id, item.quantity, item.unit_cost) for item in order.items if not item.components]
+    inventories = inventory_ops.lock_inventory(db, (product_id for product_id, _, _ in restock))
+    for product_id, quantity, unit_cost in restock:
         inventory_ops.receive(
             db,
-            inventories[item.product_id],
-            item.quantity,
-            item.unit_cost,
+            inventories[product_id],
+            quantity,
+            unit_cost,
             tx_type=TransactionType.ORDER_CANCEL,
             reference_type="sales_order",
             reference_id=order.id,

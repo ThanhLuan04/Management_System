@@ -3,15 +3,15 @@
 import logging
 import uuid
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.errors import AppError
-from app.models import Brand, Category, Inventory, Product, User
+from app.models import Brand, Category, Inventory, Product, ProductKind, User
 from app.schemas.catalog import ProductCreate, ProductOut
-from app.services import audit_service
+from app.services import audit_service, recipe_service
 from app.utils.pagination import apply_sort, paginate
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,8 @@ _AUDITED_FIELDS = (
     "min_stock",
     "description",
     "is_active",
+    "purchase_unit",
+    "purchase_factor",
 )
 
 _DUPLICATE_SKU = AppError("DUPLICATE_SKU", "Mã SKU đã tồn tại", 409)
@@ -51,28 +53,50 @@ def _field_error(field: str, message: str) -> AppError:
     return AppError("VALIDATION_ERROR", "Dữ liệu không hợp lệ", 422, [{"field": field, "message": message}])
 
 
+def _recipe_line(line, include_cost: bool) -> dict:
+    ingredient = line.ingredient
+    ref = {
+        "id": ingredient.id,
+        "sku": ingredient.sku,
+        "name": ingredient.name,
+        "unit": ingredient.unit,
+        "kind": ingredient.kind,
+        "is_active": ingredient.is_active,
+        "quantity": ingredient.inventory.quantity,
+    }
+    if include_cost:
+        ref["avg_cost"] = ingredient.inventory.avg_cost
+    return {"ingredient": ref, "quantity": line.quantity}
+
+
 def to_out(product: Product, include_cost: bool) -> ProductOut:
+    is_dish = product.kind == ProductKind.DISH
     data = {
         "id": product.id,
         "sku": product.sku,
         "barcode": product.barcode,
         "name": product.name,
+        "kind": product.kind,
         "category": product.category,
         "brand": product.brand,
         "unit": product.unit,
+        "purchase_unit": product.purchase_unit,
+        "purchase_factor": product.purchase_factor,
         "sale_price": product.sale_price,
         "min_stock": product.min_stock,
         "image_url": f"/uploads/{product.image_path}" if product.image_path else None,
         "description": product.description,
         "is_active": product.is_active,
-        "quantity": product.inventory.quantity,
-        "is_low_stock": product.is_active and product.inventory.quantity <= product.min_stock,
+        # Món không có tồn riêng: "tồn" là số phần còn làm được từ nguyên liệu
+        "quantity": recipe_service.portions_available(product) if is_dish else product.inventory.quantity,
+        "is_low_stock": not is_dish and product.is_active and product.inventory.quantity <= product.min_stock,
+        "recipe": [_recipe_line(line, include_cost) for line in product.recipe],
         "created_at": product.created_at,
         "updated_at": product.updated_at,
     }
     # Chỉ đưa giá vốn vào response khi có quyền; route dùng response_model_exclude_unset để bỏ hẳn trường này
     if include_cost:
-        data["avg_cost"] = product.inventory.avg_cost
+        data["avg_cost"] = recipe_service.estimated_cost(product) if is_dish else product.inventory.avg_cost
     return ProductOut.model_validate(data, from_attributes=True)
 
 
@@ -95,6 +119,9 @@ def list_products(
     is_active: bool | None,
     low_stock: bool | None,
     page: int,
+    kind: str | None = None,
+    sellable: bool | None = None,
+    stocked: bool | None = None,
     page_size: int,
     sort: str | None,
 ) -> tuple[list[Product], int]:
@@ -111,10 +138,36 @@ def list_products(
         stmt = stmt.where(Product.brand_id == brand_id)
     if is_active is not None:
         stmt = stmt.where(Product.is_active.is_(is_active))
+    if kind is not None:
+        stmt = stmt.where(Product.kind == kind)
+    if sellable is not None:
+        is_ingredient = Product.kind == ProductKind.INGREDIENT
+        stmt = stmt.where(~is_ingredient if sellable else is_ingredient)
+    if stocked is not None:
+        is_dish = Product.kind == ProductKind.DISH
+        stmt = stmt.where(~is_dish if stocked else is_dish)
     if low_stock:
-        stmt = stmt.where(Product.is_active.is_(True), Inventory.quantity <= Product.min_stock)
+        stmt = stmt.where(low_stock_condition())
     stmt = apply_sort(stmt, sort, SORTABLE_FIELDS, default="-created_at")
     return paginate(db, stmt, page, page_size)
+
+
+def low_stock_condition():
+    """Sắp hết hàng: chỉ sản phẩm có tồn kho thật (món ăn không có tồn riêng). Cần join Inventory."""
+    return and_(
+        Product.is_active.is_(True),
+        Product.kind != ProductKind.DISH,
+        Inventory.quantity <= Product.min_stock,
+    )
+
+
+def _validate_units(kind: str, purchase_unit: str | None, purchase_factor: int) -> None:
+    if kind == ProductKind.DISH and (purchase_unit is not None or purchase_factor != 1):
+        raise _field_error("purchase_factor", "Món ăn không nhập hàng nên không có đơn vị nhập")
+    if purchase_factor > 1 and purchase_unit is None:
+        raise _field_error("purchase_unit", "Nhập tên đơn vị nhập (vd. kg, thùng)")
+    if purchase_factor == 1 and purchase_unit is not None:
+        raise _field_error("purchase_factor", "Đơn vị nhập phải lớn hơn 1 đơn vị kho (vd. 1 kg = 1000 g)")
 
 
 def get_product(db: Session, product_id: int) -> Product:
@@ -169,6 +222,9 @@ def create_product(db: Session, data: ProductCreate, actor: User, ip: str | None
     _active_category(db, data.category_id)
     if data.brand_id is not None:
         _active_brand(db, data.brand_id)
+    _validate_units(data.kind, data.purchase_unit, data.purchase_factor)
+    if data.kind == ProductKind.DISH:
+        data.min_stock = 0  # món không có tồn riêng → không cảnh báo sắp hết
 
     product = Product(**data.model_dump(), created_by=actor.id)
     # Mỗi sản phẩm có sẵn một dòng tồn kho = 0, tạo trong cùng transaction
@@ -194,7 +250,16 @@ def update_product(db: Session, product_id: int, changes: dict, actor: User, ip:
     before = {k: getattr(product, k) for k in _AUDITED_FIELDS}
 
     # Các trường bắt buộc: gửi null thì coi như không đổi (barcode/brand/description null = xóa giá trị)
-    for required in ("sku", "name", "category_id", "unit", "sale_price", "min_stock", "is_active"):
+    for required in (
+        "sku",
+        "name",
+        "category_id",
+        "unit",
+        "sale_price",
+        "min_stock",
+        "is_active",
+        "purchase_factor",
+    ):
         if changes.get(required, ...) is None:
             changes.pop(required)
 
@@ -203,6 +268,14 @@ def update_product(db: Session, product_id: int, changes: dict, actor: User, ip:
         _active_category(db, changes["category_id"])
     if changes.get("brand_id") is not None and changes["brand_id"] != product.brand_id:
         _active_brand(db, changes["brand_id"])
+    if "purchase_unit" in changes or "purchase_factor" in changes:
+        _validate_units(
+            product.kind,
+            changes.get("purchase_unit", product.purchase_unit),
+            changes.get("purchase_factor") or product.purchase_factor,
+        )
+    if product.kind == ProductKind.DISH:
+        changes.pop("min_stock", None)
     if changes.get("is_active") is True and not product.is_active:
         category = db.get(Category, changes.get("category_id", product.category_id))
         if not category.is_active:

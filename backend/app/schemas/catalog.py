@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
@@ -27,6 +27,12 @@ Barcode = Annotated[
     Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9-]{4,50}$")] | None, BeforeValidator(empty_to_none)
 ]
 SalePrice = Annotated[Decimal, Field(ge=0, le=Decimal("999999999999")), AfterValidator(_whole_dong)]
+Kind = Literal["GOODS", "DISH", "INGREDIENT"]
+PurchaseUnit = Annotated[
+    Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)] | None,
+    BeforeValidator(empty_to_none),
+]
+PurchaseFactor = Annotated[int, Field(ge=1, le=1_000_000, description="1 đơn vị nhập = bao nhiêu đơn vị kho")]
 
 
 # ---------- Danh mục ----------
@@ -102,26 +108,58 @@ class BrandUpdate(StrictModel):
 # ---------- Sản phẩm ----------
 
 
+class IngredientRef(BaseModel):
+    id: int
+    sku: str
+    name: str
+    unit: str
+    kind: Kind
+    is_active: bool
+    quantity: int = Field(description="Tồn hiện tại theo đơn vị kho")
+    avg_cost: Decimal | None = Field(None, description="Chỉ có khi người dùng có quyền cost.view")
+
+
+class RecipeLineOut(BaseModel):
+    ingredient: IngredientRef
+    quantity: int = Field(description="Lượng cho 1 phần, theo đơn vị kho của nguyên liệu")
+
+
 class ProductOut(BaseModel):
     id: int
     sku: str
     barcode: str | None
     name: str
+    kind: Kind
     category: CategoryRef
     brand: BrandRef | None
     unit: str
+    purchase_unit: str | None
+    purchase_factor: int
     sale_price: Decimal
     min_stock: int
     image_url: str | None
     description: str | None
     is_active: bool
-    quantity: int = Field(description="Tồn kho hiện tại (chỉ đọc)")
+    quantity: int = Field(
+        description="Tồn kho hiện tại (chỉ đọc). Món ăn: số phần còn làm được từ nguyên liệu trong kho"
+    )
     is_low_stock: bool
+    recipe: list[RecipeLineOut] = Field(description="Công thức định lượng (chỉ món ăn)")
     avg_cost: Decimal | None = Field(
-        None, description="Giá vốn bình quân — chỉ có trong response khi người dùng có quyền cost.view"
+        None,
+        description="Giá vốn bình quân (món ăn: giá vốn ước tính theo công thức) — chỉ có khi có quyền cost.view",
     )
     created_at: datetime
     updated_at: datetime
+
+
+class RecipeLineIn(StrictModel):
+    ingredient_id: int
+    quantity: Annotated[int, Field(ge=1, le=1_000_000)]
+
+
+class RecipeUpdate(StrictModel):
+    items: Annotated[list[RecipeLineIn], Field(max_length=30)]
 
 
 class ProductCreate(StrictModel):
@@ -135,6 +173,9 @@ class ProductCreate(StrictModel):
     min_stock: Annotated[int, Field(ge=0, le=1_000_000)] = 0
     description: OptionalLongText = None
     is_active: bool = True
+    kind: Kind = Field("GOODS", description="Không đổi được sau khi tạo")
+    purchase_unit: PurchaseUnit = None
+    purchase_factor: PurchaseFactor = 1
 
 
 class ProductUpdate(StrictModel):
@@ -150,3 +191,5 @@ class ProductUpdate(StrictModel):
     min_stock: Annotated[int, Field(ge=0, le=1_000_000)] | None = None
     description: OptionalLongText = None
     is_active: bool | None = None
+    purchase_unit: PurchaseUnit = None
+    purchase_factor: PurchaseFactor | None = None

@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImagePlus } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { Controller, useForm, type UseFormSetError } from "react-hook-form";
+import { Controller, useForm, type UseFormSetError, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -16,7 +16,17 @@ import { Skeleton } from "@/components/ui/Spinner";
 import { toApiError } from "@/services/apiError";
 import { formatMoney, formatNumber } from "@/utils/format";
 
-import { flattenCategories, type Product, useBrands, useCategoryTree, useProduct, useSaveProduct, useUploadProductImage } from "./api";
+import {
+  flattenCategories,
+  KIND_LABELS,
+  type Product,
+  type ProductKind,
+  useBrands,
+  useCategoryTree,
+  useProduct,
+  useSaveProduct,
+  useUploadProductImage,
+} from "./api";
 import { ProductThumb } from "./components";
 
 const schema = z.object({
@@ -34,10 +44,22 @@ const schema = z.object({
   category_id: z.string().min(1, "Vui lòng chọn danh mục"),
   brand_id: z.string(),
   unit: z.string().trim().min(1, "Vui lòng nhập đơn vị tính").max(20, "Tối đa 20 ký tự"),
-  sale_price: z.string().min(1, "Vui lòng nhập giá bán"),
+  sale_price: z.string(),
   min_stock: z.string().regex(/^\d{1,7}$/, "Nhập số nguyên ≥ 0"),
   description: z.string().max(2000, "Tối đa 2000 ký tự"),
   is_active: z.boolean(),
+  kind: z.enum(["GOODS", "DISH", "INGREDIENT"]),
+  purchase_unit: z.string().trim().max(20, "Tối đa 20 ký tự"),
+  purchase_factor: z.string().regex(/^[1-9]\d{0,6}$/, "Nhập số nguyên ≥ 1"),
+}).superRefine((v, ctx) => {
+  // Cùng quy tắc với server: có đơn vị nhập thì 1 đơn vị nhập phải > 1 đơn vị kho.
+  // Để trống đơn vị nhập = nhập theo đơn vị kho (gửi hệ số 1, bỏ qua ô quy đổi đang ẩn).
+  // Nguyên liệu không bán ở quầy → không cần giá bán (ô bị ẩn)
+  if (v.kind !== "INGREDIENT" && !v.sale_price)
+    ctx.addIssue({ code: "custom", path: ["sale_price"], message: "Vui lòng nhập giá bán" });
+  if (v.kind === "DISH") return;
+  if (v.purchase_unit && Number(v.purchase_factor) <= 1)
+    ctx.addIssue({ code: "custom", path: ["purchase_factor"], message: "1 đơn vị nhập phải lớn hơn 1 đơn vị kho" });
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -53,6 +75,21 @@ const EMPTY: FormValues = {
   min_stock: "0",
   description: "",
   is_active: true,
+  kind: "GOODS",
+  purchase_unit: "",
+  purchase_factor: "1",
+};
+
+const KIND_HINTS: Record<ProductKind, string> = {
+  GOODS: "Bán bao nhiêu trừ kho chính nó bấy nhiêu",
+  DISH: "Bán món sẽ trừ nguyên liệu theo công thức định lượng",
+  INGREDIENT: "Nhập kho, kiểm kê như hàng thường nhưng không bán ở quầy",
+};
+
+const UNIT_HINTS: Record<ProductKind, string> = {
+  GOODS: "Ví dụ: cái, hộp, chai, gói",
+  DISH: "Ví dụ: tô, đĩa, ly, phần",
+  INGREDIENT: "Đơn vị nhỏ nhất dùng trong công thức: g, ml, cái",
 };
 
 function toFormValues(p: Product): FormValues {
@@ -67,6 +104,9 @@ function toFormValues(p: Product): FormValues {
     min_stock: String(p.min_stock),
     description: p.description ?? "",
     is_active: p.is_active,
+    kind: p.kind,
+    purchase_unit: p.purchase_unit ?? "",
+    purchase_factor: String(p.purchase_factor),
   };
 }
 
@@ -151,6 +191,9 @@ export function ProductFormPage() {
     setError,
     formState: { errors, isDirty },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: EMPTY });
+  const kind = useWatch({ control, name: "kind" });
+  const unit = useWatch({ control, name: "unit" });
+  const purchaseUnit = useWatch({ control, name: "purchase_unit" });
 
   useEffect(() => {
     if (product.data) reset(toFormValues(product.data));
@@ -165,16 +208,23 @@ export function ProductFormPage() {
         category_id: Number(values.category_id),
         brand_id: values.brand_id ? Number(values.brand_id) : null,
         unit: values.unit,
-        sale_price: values.sale_price,
-        min_stock: Number(values.min_stock),
+        // Nguyên liệu không bán ở quầy → không có giá bán; món không có tồn riêng → không có tồn tối thiểu
+        sale_price: values.kind === "INGREDIENT" ? "0" : values.sale_price,
+        min_stock: values.kind === "DISH" ? 0 : Number(values.min_stock),
         description: values.description || null,
         is_active: values.is_active,
+        ...(isEdit ? {} : { kind: values.kind }),
+        purchase_unit: values.kind === "DISH" ? null : values.purchase_unit || null,
+        purchase_factor: values.kind === "DISH" || !values.purchase_unit ? 1 : Number(values.purchase_factor),
       },
       {
         onSuccess: (saved) => {
           if (isEdit) {
             toast.success("Đã lưu sản phẩm");
             navigate(`/products/${saved.id}`);
+          } else if (saved.kind === "DISH") {
+            toast.success("Đã tạo món. Khai báo công thức định lượng để bán được món.");
+            navigate(`/products/${saved.id}`, { replace: true });
           } else {
             toast.success("Đã tạo sản phẩm. Bạn có thể thêm ảnh ngay bây giờ.");
             navigate(`/products/${saved.id}/edit`, { replace: true });
@@ -202,6 +252,17 @@ export function ProductFormPage() {
         <Card className="xl:col-span-2">
           <CardHeader title="Thông tin sản phẩm" />
           <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <FormField label="Loại" htmlFor="kind" required hint={isEdit ? "Không đổi được loại sau khi tạo" : KIND_HINTS[kind]}>
+                <Select id="kind" disabled={isEdit} {...register("kind")}>
+                  {(Object.keys(KIND_LABELS) as ProductKind[]).map((k) => (
+                    <option key={k} value={k}>
+                      {KIND_LABELS[k]}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            </div>
             <FormField label="SKU" htmlFor="sku" required error={errors.sku?.message} hint="Tự viết hoa khi lưu">
               <Input id="sku" invalid={!!errors.sku} {...register("sku")} />
             </FormField>
@@ -235,27 +296,60 @@ export function ProductFormPage() {
                   ))}
               </Select>
             </FormField>
-            <FormField label="Đơn vị tính" htmlFor="unit" required error={errors.unit?.message} hint="Ví dụ: cái, hộp, chai, gói">
+            <FormField
+              label={kind === "INGREDIENT" ? "Đơn vị kho" : "Đơn vị tính"}
+              htmlFor="unit"
+              required
+              error={errors.unit?.message}
+              hint={UNIT_HINTS[kind]}
+            >
               <Input id="unit" invalid={!!errors.unit} {...register("unit")} />
             </FormField>
-            <FormField label="Giá bán" htmlFor="sale_price" required error={errors.sale_price?.message}>
-              <Controller
-                control={control}
-                name="sale_price"
-                render={({ field }) => (
-                  <MoneyInput id="sale_price" invalid={!!errors.sale_price} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+            {kind !== "INGREDIENT" && (
+              <FormField label="Giá bán" htmlFor="sale_price" required error={errors.sale_price?.message}>
+                <Controller
+                  control={control}
+                  name="sale_price"
+                  render={({ field }) => (
+                    <MoneyInput id="sale_price" invalid={!!errors.sale_price} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+                  )}
+                />
+              </FormField>
+            )}
+            {kind !== "DISH" && (
+              <FormField
+                label="Tồn tối thiểu"
+                htmlFor="min_stock"
+                required
+                error={errors.min_stock?.message}
+                hint={`Cảnh báo khi tồn kho ≤ mức này${unit ? ` (theo ${unit})` : ""}`}
+              >
+                <Input id="min_stock" inputMode="numeric" invalid={!!errors.min_stock} {...register("min_stock")} />
+              </FormField>
+            )}
+            {kind !== "DISH" && (
+              <>
+                <FormField
+                  label="Đơn vị nhập"
+                  htmlFor="purchase_unit"
+                  error={errors.purchase_unit?.message}
+                  hint="Để trống nếu nhập hàng theo đúng đơn vị kho"
+                >
+                  <Input id="purchase_unit" placeholder="vd. kg, thùng" invalid={!!errors.purchase_unit} {...register("purchase_unit")} />
+                </FormField>
+                {purchaseUnit && (
+                  <FormField
+                    label={`1 ${purchaseUnit} bằng bao nhiêu ${unit || "đơn vị kho"}?`}
+                    htmlFor="purchase_factor"
+                    required
+                    error={errors.purchase_factor?.message}
+                    hint="vd. 1 kg = 1000 g, 1 thùng = 24 lon"
+                  >
+                    <Input id="purchase_factor" inputMode="numeric" invalid={!!errors.purchase_factor} {...register("purchase_factor")} />
+                  </FormField>
                 )}
-              />
-            </FormField>
-            <FormField
-              label="Tồn tối thiểu"
-              htmlFor="min_stock"
-              required
-              error={errors.min_stock?.message}
-              hint="Cảnh báo khi tồn kho ≤ mức này"
-            >
-              <Input id="min_stock" inputMode="numeric" invalid={!!errors.min_stock} {...register("min_stock")} />
-            </FormField>
+              </>
+            )}
             <div className="sm:col-span-2">
               <FormField label="Mô tả" htmlFor="description" error={errors.description?.message}>
                 <Textarea id="description" rows={3} invalid={!!errors.description} {...register("description")} />

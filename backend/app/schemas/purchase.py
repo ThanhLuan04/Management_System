@@ -47,9 +47,12 @@ class PurchaseItemOut(BaseModel):
     product_id: int
     sku: str
     product_name: str
-    unit: str
-    quantity: int
-    unit_cost: Decimal
+    unit: str = Field(description="Đơn vị kho")
+    purchase_unit: str | None = Field(description="Đơn vị nhập (null = nhập theo đơn vị kho)")
+    conversion_factor: int = Field(description="1 đơn vị nhập = bao nhiêu đơn vị kho")
+    quantity: int = Field(description="Số lượng theo đơn vị nhập")
+    stock_quantity: int = Field(description="Số lượng cộng vào kho = quantity × conversion_factor")
+    unit_cost: Decimal = Field(description="Đơn giá theo đơn vị nhập")
     discount_amount: Decimal
     line_total: Decimal
 

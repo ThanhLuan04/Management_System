@@ -13,6 +13,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -50,6 +51,17 @@ class Brand(TimestampMixin, Base):
 Index("uq_brands_name_lower", func.lower(Brand.name), unique=True)
 
 
+class ProductKind:
+    """Loại sản phẩm — quyết định bán ở đâu và trừ kho thế nào."""
+
+    GOODS = "GOODS"  # hàng bán lại: bán bao nhiêu trừ kho chính nó bấy nhiêu
+    DISH = "DISH"  # món chế biến: không có tồn riêng, bán thì trừ nguyên liệu theo công thức
+    INGREDIENT = "INGREDIENT"  # nguyên liệu: nhập kho, kiểm kê như hàng thường nhưng không bán ở quầy
+
+    ALL = (GOODS, DISH, INGREDIENT)
+    STOCKED = (GOODS, INGREDIENT)
+
+
 class Product(TimestampMixin, Base):
     """Thông tin hàng hóa. KHÔNG chứa tồn kho/giá vốn — hai giá trị đó thuộc bảng inventory."""
 
@@ -57,6 +69,8 @@ class Product(TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("sale_price >= 0", name="sale_price_non_negative"),
         CheckConstraint("min_stock >= 0", name="min_stock_non_negative"),
+        CheckConstraint("kind IN ('GOODS', 'DISH', 'INGREDIENT')", name="kind_valid"),
+        CheckConstraint("purchase_factor >= 1", name="purchase_factor_positive"),
         # Tìm kiếm ILIKE '%...%' theo tên nhanh nhờ chỉ mục trigram
         Index(
             "ix_products_name_trgm", "name", postgresql_using="gin", postgresql_ops={"name": "gin_trgm_ops"}
@@ -78,10 +92,45 @@ class Product(TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true", index=True)
     created_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
+    # Không đổi được sau khi tạo (đổi loại sẽ làm sai lịch sử kho / giá vốn)
+    kind: Mapped[str] = mapped_column(
+        String(12), nullable=False, server_default=ProductKind.GOODS, index=True
+    )
+    # Quy đổi khi nhập hàng: nhập theo "kg" (purchase_unit), kho lưu theo "g" (unit), 1 kg = 1000 g
+    purchase_unit: Mapped[str | None] = mapped_column(String(20))
+    purchase_factor: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
     category: Mapped[Category] = relationship(lazy="joined")
     brand: Mapped[Brand | None] = relationship(lazy="joined")
     inventory: Mapped["Inventory"] = relationship(back_populates="product", lazy="joined", uselist=False)
+    recipe: Mapped[list["RecipeItem"]] = relationship(
+        foreign_keys="RecipeItem.dish_id",
+        cascade="all, delete-orphan",
+        order_by="RecipeItem.id",
+        lazy="selectin",
+    )
+
+
+class RecipeItem(Base):
+    """Công thức định lượng: 1 phần món cần bao nhiêu nguyên liệu (theo đơn vị kho của nguyên liệu)."""
+
+    __tablename__ = "recipe_items"
+    __table_args__ = (
+        UniqueConstraint("dish_id", "ingredient_id", name="uq_recipe_items_dish_ingredient"),
+        CheckConstraint("quantity > 0", name="quantity_positive"),
+        CheckConstraint("dish_id <> ingredient_id", name="not_self"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    dish_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    ingredient_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("products.id"), nullable=False, index=True
+    )
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    ingredient: Mapped[Product] = relationship(foreign_keys=[ingredient_id], lazy="joined")
 
 
 class Inventory(Base):

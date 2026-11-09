@@ -14,8 +14,9 @@ import { toApiError } from "@/services/apiError";
 import { cn } from "@/utils/cn";
 import { formatDateTime, formatMoney, formatNumber } from "@/utils/format";
 
-import { useProduct, useProductStock, useSetProductActive } from "./api";
+import { KIND_LABELS, useProduct, useProductStock, useSetProductActive } from "./api";
 import { ActiveBadge, ProductThumb, StockCell, TRANSACTION_LABELS } from "./components";
+import { RecipeEditor } from "./RecipeEditor";
 
 function Info({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -37,6 +38,7 @@ export function ProductDetailPage() {
   if (product.error) return <ErrorState error={product.error} onRetry={() => product.refetch()} />;
   if (product.isPending) return <Skeleton className="h-96" />;
   const p = product.data;
+  const isDish = p.kind === "DISH";
 
   const toggleActive = () =>
     setActive.mutate(
@@ -54,7 +56,7 @@ export function ProductDetailPage() {
     <>
       <PageHeader
         title={p.name}
-        description={`SKU ${p.sku}`}
+        description={`${KIND_LABELS[p.kind]} · SKU ${p.sku}`}
         actions={
           can(P.CATALOG_MANAGE) && (
             <>
@@ -75,21 +77,37 @@ export function ProductDetailPage() {
             <ProductThumb url={p.image_url} name={p.name} className="h-40 w-40 rounded-xl text-5xl" />
             <dl className="grid grid-cols-2 gap-4 text-sm">
               <Info label="Trạng thái"><ActiveBadge active={p.is_active} /></Info>
-              <Info label="Tồn kho"><StockCell quantity={p.quantity} isLow={p.is_low_stock} /></Info>
-              <Info label="Giá bán"><span className="tabular">{formatMoney(p.sale_price)}</span></Info>
+              <Info label={isDish ? "Còn làm được" : "Tồn kho"}>
+                <StockCell quantity={p.quantity} isLow={p.is_low_stock} />
+              </Info>
+              {p.kind !== "INGREDIENT" && (
+                <Info label="Giá bán"><span className="tabular">{formatMoney(p.sale_price)}</span></Info>
+              )}
               {p.avg_cost !== undefined && (
-                <Info label="Giá vốn bình quân"><span className="tabular">{formatMoney(p.avg_cost)}</span></Info>
+                <Info label={isDish ? "Giá vốn ước tính" : "Giá vốn bình quân"}>
+                  <span className="tabular">{formatMoney(p.avg_cost)}</span>
+                </Info>
               )}
               <Info label="Danh mục">{p.category.name}</Info>
               <Info label="Thương hiệu">{p.brand?.name ?? "—"}</Info>
               <Info label="Đơn vị tính">{p.unit}</Info>
-              <Info label="Tồn tối thiểu"><span className="tabular">{formatNumber(p.min_stock)}</span></Info>
+              {!isDish && <Info label="Tồn tối thiểu"><span className="tabular">{formatNumber(p.min_stock)}</span></Info>}
+              {p.purchase_unit && (
+                <Info label="Đơn vị nhập">
+                  <span className="tabular">1 {p.purchase_unit} = {formatNumber(p.purchase_factor)} {p.unit}</span>
+                </Info>
+              )}
               <Info label="Mã vạch">{p.barcode ?? "—"}</Info>
             </dl>
             {p.description && <p className="text-sm whitespace-pre-line text-muted">{p.description}</p>}
           </CardContent>
         </Card>
 
+        {isDish ? (
+          <div className="xl:col-span-2">
+            <RecipeEditor dish={p} canEdit={can(P.CATALOG_MANAGE)} />
+          </div>
+        ) : (
         <Card className="xl:col-span-2">
           <CardHeader title="Biến động kho gần đây" description="20 giao dịch mới nhất" />
           <CardContent className="px-0">
@@ -137,6 +155,7 @@ export function ProductDetailPage() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
 
       <ConfirmDialog

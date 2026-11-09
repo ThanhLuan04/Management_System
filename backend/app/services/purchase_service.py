@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import AppError
 from app.models import (
     Product,
+    ProductKind,
     PurchaseOrder,
     PurchaseOrderItem,
     PurchaseStatus,
@@ -21,6 +22,9 @@ from app.services import audit_service, code_gen, inventory_ops
 from app.services.pricing import effective_unit_cost, purchase_line_total
 from app.utils.pagination import apply_sort, paginate
 from app.utils.time import utcnow, vn_day_range, vn_today
+
+# Tồn kho là INTEGER (tối đa ~2,1 tỷ): chặn sớm số lượng sau quy đổi quá lớn
+MAX_STOCK_QUANTITY = 1_000_000_000
 
 SORTABLE_FIELDS = {
     "code": PurchaseOrder.code,
@@ -64,7 +68,10 @@ def to_out(order: PurchaseOrder) -> PurchaseOut:
                 sku=item.product.sku,
                 product_name=item.product.name,
                 unit=item.product.unit,
+                purchase_unit=item.purchase_unit,
+                conversion_factor=item.conversion_factor,
                 quantity=item.quantity,
+                stock_quantity=item.quantity * item.conversion_factor,
                 unit_cost=item.unit_cost,
                 discount_amount=item.discount_amount,
                 line_total=item.line_total,
@@ -131,6 +138,12 @@ def _validate_and_build_items(db: Session, data: PurchaseCreate) -> tuple[list[P
         product = products.get(item.product_id)
         if product is None or not product.is_active:
             raise _field_error(f"items.{index}.product_id", "Sản phẩm không tồn tại hoặc đã ngừng kinh doanh")
+        if product.kind == ProductKind.DISH:
+            raise _field_error(
+                f"items.{index}.product_id", "Món ăn không nhập kho — hãy nhập nguyên liệu của món"
+            )
+        if item.quantity * product.purchase_factor > MAX_STOCK_QUANTITY:
+            raise _field_error(f"items.{index}.quantity", "Số lượng quá lớn")
         if item.discount_amount > item.quantity * item.unit_cost:
             raise _field_error(f"items.{index}.discount_amount", "Chiết khấu không được lớn hơn thành tiền")
         items.append(
@@ -140,6 +153,9 @@ def _validate_and_build_items(db: Session, data: PurchaseCreate) -> tuple[list[P
                 unit_cost=item.unit_cost,
                 discount_amount=item.discount_amount,
                 line_total=purchase_line_total(item.quantity, item.unit_cost, item.discount_amount),
+                # Chốt quy đổi lúc lập phiếu (vd. 1 kg = 1000 g)
+                purchase_unit=product.purchase_unit,
+                conversion_factor=product.purchase_factor,
             )
         )
     return items, sum((i.line_total for i in items), Decimal("0"))
@@ -263,11 +279,13 @@ def confirm_purchase(db: Session, purchase_id: int, actor: User, ip: str | None)
 
     inventories = inventory_ops.lock_inventory(db, (item.product_id for item in items))
     for item in items:
+        # Phiếu ghi theo đơn vị nhập (20 kg × 180.000 ₫) → kho cộng theo đơn vị kho (20.000 g, 180 ₫/g)
+        stock_quantity = item.quantity * item.conversion_factor
         inventory_ops.receive(
             db,
             inventories[item.product_id],
-            item.quantity,
-            effective_unit_cost(item.line_total, item.quantity),
+            stock_quantity,
+            effective_unit_cost(item.line_total, stock_quantity),
             tx_type=TransactionType.PURCHASE,
             reference_type="purchase_order",
             reference_id=purchase_id,

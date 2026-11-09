@@ -126,6 +126,27 @@ class SalesOrderItem(Base):
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(15, 4), nullable=False)
 
     order: Mapped[SalesOrder] = relationship(back_populates="items")
+    # Dòng món ăn: nguyên liệu THỰC SỰ đã trừ (ảnh chụp công thức lúc bán) — hủy đơn hoàn lại đúng lượng này
+    components: Mapped[list["SalesOrderItemComponent"]] = relationship(
+        cascade="all, delete-orphan", order_by="SalesOrderItemComponent.id", lazy="selectin"
+    )
+
+
+class SalesOrderItemComponent(Base):
+    __tablename__ = "sales_order_item_components"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="quantity_positive"),
+        CheckConstraint("unit_cost >= 0", name="unit_cost_non_negative"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    sales_order_item_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("sales_order_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    product_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("products.id"), nullable=False, index=True)
+    # Tổng lượng nguyên liệu của cả dòng (định lượng × số phần), theo đơn vị kho
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(15, 4), nullable=False)
 
 
 class Payment(Base):

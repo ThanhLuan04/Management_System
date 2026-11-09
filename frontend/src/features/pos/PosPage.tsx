@@ -216,7 +216,7 @@ export function PosPage() {
         <Card className="min-w-0">
           <CardContent className="space-y-4">
             <div ref={pickerWrapper}>
-              <ProductPicker onSelect={addProduct} autoFocus label="Tìm sản phẩm để bán (F2)" />
+              <ProductPicker onSelect={addProduct} autoFocus label="Tìm sản phẩm để bán (F2)" filter={{ sellable: true }} />
             </div>
             <ProductGrid onSelect={addProduct} inCart={Object.fromEntries(cart.map((l) => [l.product.id, l.quantity]))} />
           </CardContent>

@@ -27,7 +27,7 @@ export function ProductGrid({ onSelect, inCart }: { onSelect: (product: Product)
     queryFn: async () =>
       (
         await http.get<Page<Product>>("/products", {
-          params: { is_active: true, sort: "name", page_size: GRID_LIMIT, ...(categoryId ? { category_id: categoryId } : {}) },
+          params: { is_active: true, sellable: true, sort: "name", page_size: GRID_LIMIT, ...(categoryId ? { category_id: categoryId } : {}) },
         })
       ).data,
     staleTime: 10_000,
@@ -71,6 +71,10 @@ export function ProductGrid({ onSelect, inCart }: { onSelect: (product: Product)
           <ul aria-label="Sản phẩm" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             {data.items.map((product) => {
               const out = product.quantity <= 0;
+              // Món ăn: "tồn" là số phần còn làm được từ nguyên liệu trong kho
+              const isDish = product.kind === "DISH";
+              const outLabel = isDish ? (product.recipe.length ? "Hết nguyên liệu" : "Chưa có công thức") : "Hết hàng";
+              const stockLabel = `còn ${formatNumber(product.quantity)}${isDish ? " phần" : ""}`;
               const count = inCart[product.id] ?? 0;
               return (
                 <li key={product.id}>
@@ -78,7 +82,7 @@ export function ProductGrid({ onSelect, inCart }: { onSelect: (product: Product)
                     type="button"
                     disabled={out}
                     onClick={() => onSelect(product)}
-                    aria-label={`Thêm ${product.name}, ${formatMoney(product.sale_price)}, ${out ? "hết hàng" : `còn ${formatNumber(product.quantity)} ${product.unit}`}`}
+                    aria-label={`Thêm ${product.name}, ${formatMoney(product.sale_price)}, ${out ? outLabel.toLowerCase() : isDish ? stockLabel : `${stockLabel} ${product.unit}`}`}
                     className={cn(
                       "relative flex h-full w-full flex-col items-start gap-2 rounded-xl border border-border bg-card p-3 text-left transition",
                       "hover:border-primary/50 hover:shadow-card focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none",
@@ -96,7 +100,7 @@ export function ProductGrid({ onSelect, inCart }: { onSelect: (product: Product)
                     <span className="mt-auto flex w-full items-baseline justify-between gap-2">
                       <span className="tabular font-semibold">{formatMoney(product.sale_price)}</span>
                       <span className={cn("tabular text-xs", out ? "font-medium text-destructive-strong" : product.is_low_stock ? "text-warning-strong" : "text-muted")}>
-                        {out ? "Hết hàng" : `còn ${formatNumber(product.quantity)}`}
+                        {out ? outLabel : stockLabel}
                       </span>
                     </span>
                   </button>

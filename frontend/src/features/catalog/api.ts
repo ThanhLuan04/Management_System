@@ -27,22 +27,54 @@ export interface Brand {
   is_active: boolean;
 }
 
+export type ProductKind = "GOODS" | "DISH" | "INGREDIENT";
+
+export const KIND_LABELS: Record<ProductKind, string> = {
+  GOODS: "Hàng hóa",
+  DISH: "Món ăn",
+  INGREDIENT: "Nguyên liệu",
+};
+
+export interface RecipeLine {
+  ingredient: {
+    id: number;
+    sku: string;
+    name: string;
+    unit: string;
+    kind: ProductKind;
+    is_active: boolean;
+    /** Tồn hiện tại theo đơn vị kho */
+    quantity: number;
+    /** Chỉ có khi người dùng có quyền cost.view */
+    avg_cost?: Money;
+  };
+  /** Lượng cho 1 phần, theo đơn vị kho của nguyên liệu */
+  quantity: number;
+}
+
 export interface Product {
   id: number;
   sku: string;
   barcode: string | null;
   name: string;
+  kind: ProductKind;
   category: { id: number; name: string };
   brand: { id: number; name: string } | null;
   unit: string;
+  /** Đơn vị nhập (vd. kg) — null: nhập theo đơn vị kho */
+  purchase_unit: string | null;
+  /** 1 đơn vị nhập = bao nhiêu đơn vị kho */
+  purchase_factor: number;
   sale_price: Money;
   min_stock: number;
   image_url: string | null;
   description: string | null;
   is_active: boolean;
+  /** Tồn kho. Món ăn: số phần còn làm được từ nguyên liệu trong kho */
   quantity: number;
   is_low_stock: boolean;
-  /** Chỉ có khi người dùng có quyền cost.view */
+  recipe: RecipeLine[];
+  /** Chỉ có khi có quyền cost.view. Món ăn: giá vốn ước tính theo công thức */
   avg_cost?: Money;
   created_at: string;
   updated_at: string;
@@ -59,6 +91,10 @@ export interface ProductPayload {
   min_stock: number;
   description: string | null;
   is_active: boolean;
+  /** Chỉ gửi khi tạo mới — không đổi được về sau */
+  kind?: ProductKind;
+  purchase_unit: string | null;
+  purchase_factor: number;
 }
 
 export interface StockTransaction {
@@ -144,6 +180,15 @@ export function useSaveProduct(id?: number) {
       queryClient.invalidateQueries({ queryKey: keys.products });
       queryClient.invalidateQueries({ queryKey: keys.categories }); // số sản phẩm trong danh mục thay đổi
     },
+  });
+}
+
+export function useSaveRecipe(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: { ingredient_id: number; quantity: number }[]) =>
+      (await http.put<Product>(`/products/${id}/recipe`, { items })).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.products }),
   });
 }
 

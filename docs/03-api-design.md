@@ -147,12 +147,20 @@ Quản lý thêm / sửa / xóa lượt của chính mình: `403`. `UserCreate` 
 | GET | `/brands` | Danh sách | A M C |
 | POST | `/brands` | Tạo | A M |
 | PATCH | `/brands/{id}` | Sửa, ngừng sử dụng | A M |
-| GET | `/products` | Danh sách (`q` tìm theo tên/SKU/barcode, `category_id`, `brand_id`, `is_active`, `low_stock`; sort: `name`, `sku`, `sale_price`, `quantity`, `created_at`) | A M C |
+| GET | `/products` | Danh sách (`q` tìm theo tên/SKU/barcode, `category_id`, `brand_id`, `is_active`, `low_stock`, `kind`, `sellable`, `stocked`; sort: `name`, `sku`, `sale_price`, `quantity`, `created_at`) | A M C |
 | POST | `/products` | Tạo (đồng thời tạo dòng inventory với SL 0) | A M |
 | GET | `/products/{id}` | Chi tiết, kèm `quantity` và `avg_cost` (avg_cost chỉ trả khi có `cost.view`) | A M C |
 | PATCH | `/products/{id}` | Sửa (không có trường tồn kho), ngừng kinh doanh | A M |
+| PUT | `/products/{id}/recipe` | Thay toàn bộ công thức món `{items: [{ingredient_id, quantity}]}` (≤ 30 dòng); không phải món → `NOT_A_DISH` | A M |
 | POST | `/products/{id}/image` | Upload ảnh (multipart, ≤ 2MB, JPEG/PNG/WebP) | A M |
 | GET | `/products/{id}/inventory` | Tồn hiện tại + 20 biến động gần nhất | A M C |
+
+Món ăn và nguyên liệu (bổ sung sau MVP): sản phẩm có `kind` (`GOODS` / `DISH` / `INGREDIENT`, chỉ gửi khi tạo), `purchase_unit` + `purchase_factor`
+(đơn vị nhập, vd. `kg` = 1000 đơn vị kho `g`) và `recipe` (chỉ đọc; sửa qua `PUT /products/{id}/recipe`).
+Với món, `quantity` là số phần còn làm được, `avg_cost` là giá vốn ước tính theo công thức (chỉ khi có `cost.view`, kể cả `avg_cost` của từng nguyên liệu trong `recipe`).
+Lọc: `sellable=true` (hàng hóa + món — màn hình bán hàng), `stocked=true` (hàng hóa + nguyên liệu — phiếu nhập, kiểm kê).
+Bán món: `409 INSUFFICIENT_INGREDIENTS` (`details: [{product_id, sku, name, unit, required, available}]`), `409 RECIPE_MISSING`, `409 PRODUCT_NOT_SELLABLE`.
+Dòng đơn có thêm `is_dish`; trả món với `condition: RESELLABLE` → `422`. Dòng phiếu nhập có thêm `purchase_unit`, `conversion_factor`, `stock_quantity`.
 
 ### Nhà cung cấp, khách hàng
 

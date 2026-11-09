@@ -105,7 +105,12 @@ export function PurchaseDetailPage() {
                       </Link>
                       <span className="block text-xs text-muted">{i.sku}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-right">{formatNumber(i.quantity)} {i.unit}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      {formatNumber(i.quantity)} {i.purchase_unit ?? i.unit}
+                      {i.conversion_factor > 1 && (
+                        <span className="block text-xs text-muted">= {formatNumber(i.stock_quantity)} {i.unit}</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2.5 text-right">{formatMoney(i.unit_cost)}</td>
                     <td className="px-3 py-2.5 text-right">{formatMoney(i.discount_amount)}</td>
                     <td className="px-5 py-2.5 text-right font-medium">{formatMoney(i.line_total)}</td>
@@ -121,7 +126,7 @@ export function PurchaseDetailPage() {
         open={confirming === "confirm"}
         onOpenChange={(open) => !open && setConfirming(null)}
         title="Xác nhận nhập kho?"
-        description={`Tồn kho sẽ được cộng thêm ${formatNumber(totalQuantity)} sản phẩm (${p.items.length} mặt hàng) và giá vốn bình quân được tính lại. Phiếu không thể sửa sau khi xác nhận.`}
+        description={`Tồn kho của ${p.items.length} mặt hàng sẽ được cộng theo phiếu (hàng nhập theo kg, thùng… được quy đổi sang đơn vị kho) và giá vốn bình quân được tính lại. Phiếu không thể sửa sau khi xác nhận.`}
         confirmLabel="Xác nhận nhập kho"
         loading={action.isPending}
         onConfirm={() => run("confirm")}

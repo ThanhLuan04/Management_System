@@ -6,13 +6,14 @@ import { SearchInput } from "@/components/common/SearchInput";
 import { PageHeader } from "@/components/common/States";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { P } from "@/features/auth/permissions";
 import { useListParams } from "@/hooks/useListParams";
 import { formatMoney } from "@/utils/format";
 
-import { flattenCategories, type Product, useCategoryTree, useProducts } from "./api";
+import { flattenCategories, KIND_LABELS, type Product, type ProductKind, useCategoryTree, useProducts } from "./api";
 import { ActiveBadge, ProductThumb, StockCell } from "./components";
 
 export function ProductListPage() {
@@ -40,6 +41,11 @@ export function ProductListPage() {
       cell: (p) => (
         <Link to={`/products/${p.id}`} className="font-medium hover:text-primary hover:underline">
           {p.name}
+          {p.kind !== "GOODS" && (
+            <Badge variant={p.kind === "DISH" ? "info" : "muted"} className="ml-2 align-middle">
+              {KIND_LABELS[p.kind]}
+            </Badge>
+          )}
           {p.brand && <span className="block text-xs font-normal text-muted">{p.brand.name}</span>}
         </Link>
       ),
@@ -50,14 +56,20 @@ export function ProductListPage() {
       header: "Giá bán",
       sortKey: "sale_price",
       align: "right",
-      cell: (p) => <span className="tabular">{formatMoney(p.sale_price)}</span>,
+      cell: (p) => (p.kind === "INGREDIENT" ? <span className="text-muted">—</span> : <span className="tabular">{formatMoney(p.sale_price)}</span>),
     },
     {
       key: "stock",
       header: "Tồn",
       sortKey: "quantity",
       align: "right",
-      cell: (p) => <StockCell quantity={p.quantity} isLow={p.is_low_stock} />,
+      // Món ăn: số phần còn làm được từ nguyên liệu
+      cell: (p) => (
+        <span title={p.kind === "DISH" ? "Số phần còn làm được từ nguyên liệu" : undefined}>
+          <StockCell quantity={p.quantity} isLow={p.is_low_stock} />
+          {p.kind === "DISH" && <span className="ml-1 text-xs text-muted">phần</span>}
+        </span>
+      ),
     },
     { key: "status", header: "Trạng thái", cell: (p) => <ActiveBadge active={p.is_active} /> },
     ...(canManage
@@ -108,6 +120,19 @@ export function ProductListPage() {
             {flattenCategories(categoryTree).map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
+              </option>
+            ))}
+          </Select>
+          <Select
+            aria-label="Lọc theo loại"
+            value={filters.kind ?? ""}
+            onChange={(e) => list.setFilter("kind", e.target.value || undefined)}
+            className="w-40"
+          >
+            <option value="">Mọi loại</option>
+            {(Object.keys(KIND_LABELS) as ProductKind[]).map((k) => (
+              <option key={k} value={k}>
+                {KIND_LABELS[k]}
               </option>
             ))}
           </Select>

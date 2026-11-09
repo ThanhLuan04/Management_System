@@ -221,6 +221,16 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-SH04** Đóng ca chờ các giao dịch đang thực hiện hoàn tất rồi mới cộng số liệu — không giao dịch nào lọt ra ngoài ca. Không có thu/chi tiền mặt khác trong ca (rút/bổ sung tiền ghi vào lý do chênh lệch).
 - **BR-SH05** Thu ngân xem và đóng ca hiện tại; Quản lý, Admin xem lịch sử ca, lọc ca lệch tiền, xem doanh số từng thu ngân trong ca.
 
+### Món ăn và công thức định lượng (bổ sung sau MVP)
+
+- **BR-RC01** Sản phẩm có 3 loại, chọn khi tạo và **không đổi được** về sau: **Hàng hóa** (bán bao nhiêu trừ kho chính nó), **Món ăn** (không có tồn riêng, bán thì trừ nguyên liệu theo công thức), **Nguyên liệu** (nhập kho, kiểm kê như hàng thường nhưng không bán ở quầy: `PRODUCT_NOT_SELLABLE`).
+- **BR-RC02** Công thức ghi lượng nguyên liệu cho **1 phần** món, là **số nguyên theo đơn vị kho** của nguyên liệu (g, ml, cái) — không có sai số làm tròn khi trừ kho. Nguyên liệu của món phải là nguyên liệu hoặc hàng hóa (không lồng món trong món). Sửa công thức được ghi nhật ký.
+- **BR-RC03** Bán món: trừ `định lượng × số phần` của từng nguyên liệu (cộng dồn khi nhiều món dùng chung). Thiếu nguyên liệu thì **chặn bán** và báo rõ (`INSUFFICIENT_INGREDIENTS`: tên, cần bao nhiêu, còn bao nhiêu) — tồn kho không bao giờ âm. Món chưa có công thức không bán được (`RECIPE_MISSING`).
+- **BR-RC04** Giá vốn món = Σ(định lượng × giá vốn bình quân của nguyên liệu) tại lúc bán, chốt vào dòng đơn → báo cáo lợi nhuận gộp tự đúng. Trang món hiện giá vốn ước tính và **% chi phí nguyên liệu** trên giá bán.
+- **BR-RC05** Lượng nguyên liệu thực tế đã trừ được lưu theo từng dòng đơn. Hủy đơn hoàn **đúng lượng đó** theo giá vốn lúc bán, dù công thức đã đổi sau đó. Trả món chỉ hoàn tiền, **không nhập lại kho** (món đã chế biến).
+- **BR-RC06** "Tồn" hiển thị của món = số phần còn làm được từ nguyên liệu trong kho. Món không có trong danh sách kho, báo cáo tồn, cảnh báo sắp hết, phiếu nhập và phiếu điều chỉnh (`NOT_STOCKED`).
+- **BR-RC07** Hàng hóa và nguyên liệu có thể có **đơn vị nhập** khác đơn vị kho (vd. 1 kg = 1000 g, 1 thùng = 24 lon). Phiếu nhập ghi theo đơn vị nhập (20 kg × 180.000 ₫), kho cộng theo đơn vị kho (20.000 g, giá vốn 180 ₫/g). Quy đổi được chốt vào phiếu lúc lập.
+
 ### Chấm công (bổ sung sau MVP)
 
 - **BR-AT01** Mỗi nhân viên tự bấm **Vào ca / Ra ca**; mỗi người chỉ có **một lượt đang mở** (database chặn lượt thứ hai: `ALREADY_CLOCKED_IN`). Chấm công độc lập với ca két tiền.
@@ -280,6 +290,9 @@ Mọi lỗi trả về cùng định dạng:
 | `DUPLICATE_SKU`, `DUPLICATE_BARCODE`, `DUPLICATE_USERNAME`, `DUPLICATE_PHONE` | 409 | Trùng dữ liệu duy nhất |
 | `PRODUCT_INACTIVE` | 409 | Bán/nhập sản phẩm ngừng kinh doanh |
 | `OUT_OF_STOCK` | 409 | Không đủ tồn |
+| `INSUFFICIENT_INGREDIENTS` | 409 | Không đủ nguyên liệu để làm món (`details`: tên, `required`, `available`) |
+| `RECIPE_MISSING` / `PRODUCT_NOT_SELLABLE` | 409 | Bán món chưa có công thức / bán nguyên liệu ở quầy |
+| `NOT_A_DISH` / `NOT_STOCKED` | 409 | Đặt công thức cho sản phẩm không phải món / điều chỉnh kho cho món |
 | `DISCOUNT_EXCEEDS_LIMIT` | 403 | Giảm giá vượt quyền |
 | `INSUFFICIENT_PAYMENT` | 422 | Tiền khách đưa < tổng tiền |
 | `INVALID_STATE` | 409 | Xác nhận phiếu không ở nháp, hủy đơn đã hủy, … |

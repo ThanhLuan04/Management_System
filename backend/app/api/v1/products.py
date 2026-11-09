@@ -7,9 +7,9 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.permissions import Permission, permissions_for
 from app.models import User
-from app.schemas.catalog import ProductCreate, ProductOut, ProductUpdate
+from app.schemas.catalog import Kind, ProductCreate, ProductOut, ProductUpdate, RecipeUpdate
 from app.schemas.common import Page, PageParams
-from app.services import product_service
+from app.services import product_service, recipe_service
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -39,6 +39,14 @@ def list_products(
     brand_id: int | None = None,
     is_active: bool | None = None,
     low_stock: Annotated[bool | None, Query(description="Chỉ lấy sản phẩm sắp hết hàng")] = None,
+    kind: Kind | None = None,
+    sellable: Annotated[
+        bool | None, Query(description="true: hàng hóa + món (bán ở quầy); false: chỉ nguyên liệu")
+    ] = None,
+    stocked: Annotated[
+        bool | None,
+        Query(description="true: chỉ sản phẩm có tồn kho (hàng hóa + nguyên liệu, không gồm món)"),
+    ] = None,
 ):
     items, total = product_service.list_products(
         db,
@@ -47,6 +55,9 @@ def list_products(
         brand_id=brand_id,
         is_active=is_active,
         low_stock=low_stock,
+        kind=kind,
+        sellable=sellable,
+        stocked=stocked,
         page=params.page,
         page_size=params.page_size,
         sort=params.sort,
@@ -91,6 +102,18 @@ def update_product(
     product = product_service.update_product(
         db, product_id, body.model_dump(exclude_unset=True), actor, client_ip(request)
     )
+    return product_service.to_out(product, _can_view_cost(actor))
+
+
+@router.put(
+    "/{product_id}/recipe",
+    response_model=ProductOut,
+    response_model_exclude_unset=True,
+    summary="Thay toàn bộ công thức định lượng của món",
+)
+def set_recipe(product_id: int, body: RecipeUpdate, request: Request, actor: CatalogManager, db: DbSession):
+    dish = product_service.get_product(db, product_id)
+    product = recipe_service.set_recipe(db, dish, body, actor, client_ip(request))
     return product_service.to_out(product, _can_view_cost(actor))
 
 

@@ -39,7 +39,7 @@ export function ReturnDialog({ order, open, onOpenChange }: { order: Order; open
   }, [open, order.payments]);
 
   const lines = returnable
-    .map((item) => ({ item, quantity: Number(quantities[item.id] || 0), condition: conditions[item.id] ?? "RESELLABLE" }))
+    .map((item) => ({ item, quantity: Number(quantities[item.id] || 0), condition: item.is_dish ? "DAMAGED" : (conditions[item.id] ?? "RESELLABLE") }))
     .filter((l) => l.quantity > 0);
   const lineErrors = Object.fromEntries(
     returnable
@@ -120,14 +120,19 @@ export function ReturnDialog({ order, open, onOpenChange }: { order: Order; open
                     {lineErrors[item.id] && <p className="text-right text-xs text-destructive">{lineErrors[item.id]}</p>}
                   </td>
                   <td className="px-2 py-1.5">
-                    <Select
-                      aria-label={`Tình trạng ${item.product_name}`}
-                      value={conditions[item.id] ?? "RESELLABLE"}
-                      onChange={(e) => setConditions((c) => ({ ...c, [item.id]: e.target.value as Condition }))}
-                    >
-                      <option value="RESELLABLE">Còn bán được</option>
-                      <option value="DAMAGED">Hỏng</option>
-                    </Select>
+                    {item.is_dish ? (
+                      // Món đã chế biến: nguyên liệu đã dùng, không nhập lại kho
+                      <span className="text-xs text-muted">Món ăn — không nhập lại kho</span>
+                    ) : (
+                      <Select
+                        aria-label={`Tình trạng ${item.product_name}`}
+                        value={conditions[item.id] ?? "RESELLABLE"}
+                        onChange={(e) => setConditions((c) => ({ ...c, [item.id]: e.target.value as Condition }))}
+                      >
+                        <option value="RESELLABLE">Còn bán được</option>
+                        <option value="DAMAGED">Hỏng</option>
+                      </Select>
+                    )}
                   </td>
                 </tr>
               ))}

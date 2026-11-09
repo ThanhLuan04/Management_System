@@ -229,6 +229,14 @@ def create_return(
                 422,
                 [{"field": f"items.{index}.order_item_id", "message": "Dòng hàng không thuộc đơn này"}],
             )
+        if item.components and req.condition == ItemCondition.RESELLABLE:
+            # Món đã chế biến không nhập lại kho được (nguyên liệu đã dùng) → chỉ hoàn tiền, ghi nhận hỏng
+            raise AppError(
+                "VALIDATION_ERROR",
+                "Dữ liệu không hợp lệ",
+                422,
+                [{"field": f"items.{index}.condition", "message": "Món ăn đã chế biến không nhập lại kho"}],
+            )
         back = returned.get(item.id, Returned())
         returnable = item.quantity - back.quantity
         if req.quantity > returnable:

@@ -10,8 +10,17 @@ export interface PurchaseItem {
   product_id: number;
   sku: string;
   product_name: string;
+  /** Đơn vị kho */
   unit: string;
+  /** Đơn vị nhập (vd. kg) — null: nhập theo đơn vị kho */
+  purchase_unit: string | null;
+  /** 1 đơn vị nhập = bao nhiêu đơn vị kho (chốt lúc lập phiếu) */
+  conversion_factor: number;
+  /** Số lượng theo đơn vị nhập */
   quantity: number;
+  /** Số lượng cộng vào kho = quantity × conversion_factor */
+  stock_quantity: number;
+  /** Đơn giá theo đơn vị nhập */
   unit_cost: Money;
   discount_amount: Money;
   line_total: Money;

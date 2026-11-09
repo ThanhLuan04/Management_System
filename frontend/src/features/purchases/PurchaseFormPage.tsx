@@ -27,7 +27,10 @@ const lineSchema = z
     product_id: z.number(),
     sku: z.string(),
     name: z.string(),
+    /** Đơn vị trên phiếu (đơn vị nhập nếu có quy đổi) */
     unit: z.string(),
+    stock_unit: z.string(),
+    factor: z.number(),
     quantity: z.string().regex(/^[1-9]\d{0,6}$/, "SL từ 1"),
     unit_cost: z.string().min(1, "Nhập giá"),
     discount_amount: z.string(),
@@ -49,7 +52,9 @@ function toFormValues(p: Purchase): FormValues {
       product_id: i.product_id,
       sku: i.sku,
       name: i.product_name,
-      unit: i.unit,
+      unit: i.purchase_unit ?? i.unit,
+      stock_unit: i.unit,
+      factor: i.conversion_factor,
       quantity: String(i.quantity),
       unit_cost: String(Math.round(Number(i.unit_cost))),
       discount_amount: String(Math.round(Number(i.discount_amount))),
@@ -99,10 +104,16 @@ export function PurchaseFormPage() {
       product_id: product.id,
       sku: product.sku,
       name: product.name,
-      unit: product.unit,
+      // Có quy đổi (vd. 1 kg = 1000 g) → phiếu ghi theo đơn vị nhập, kho cộng theo đơn vị kho
+      unit: product.purchase_unit ?? product.unit,
+      stock_unit: product.unit,
+      factor: product.purchase_factor,
       quantity: "1",
-      // Gợi ý giá nhập = giá vốn bình quân hiện tại (nếu có quyền xem)
-      unit_cost: product.avg_cost && Number(product.avg_cost) > 0 ? String(Math.round(Number(product.avg_cost))) : "",
+      // Gợi ý giá nhập = giá vốn bình quân hiện tại × quy đổi (nếu có quyền xem)
+      unit_cost:
+        product.avg_cost && Number(product.avg_cost) > 0
+          ? String(Math.round(Number(product.avg_cost) * product.purchase_factor))
+          : "",
       discount_amount: "0",
     });
   };
@@ -177,7 +188,7 @@ export function PurchaseFormPage() {
         <Card>
           <CardHeader title="Hàng nhập" description="Chọn sản phẩm, nhập số lượng, đơn giá nhập và chiết khấu (nếu có)." />
           <CardContent className="space-y-4">
-            <ProductPicker onSelect={addProduct} label="Thêm sản phẩm vào phiếu" />
+            <ProductPicker onSelect={addProduct} label="Thêm sản phẩm vào phiếu" filter={{ stocked: true }} />
             {errors.items?.message && (
               <p role="alert" className="text-sm text-destructive">
                 {errors.items.message}
@@ -205,6 +216,7 @@ export function PurchaseFormPage() {
                             <span className="font-medium">{field.name}</span>
                             <span className="tabular block text-xs text-muted">
                               {field.sku} · {field.unit}
+                              {field.factor > 1 && ` (1 ${field.unit} = ${formatNumber(field.factor)} ${field.stock_unit})`}
                             </span>
                             {rowErrors?.product_id?.message && <p className="text-xs text-destructive">{rowErrors.product_id.message}</p>}
                           </td>
