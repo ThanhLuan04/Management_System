@@ -148,6 +148,17 @@ Chỉ Caddy mở cổng ra ngoài.
 
 CI build image và chạy thử cả cụm cho mỗi lần push (kiểm tra trang, API, header, cổng không mở, sao lưu).
 
+## Thiết lập quán bánh mì – xôi
+
+Script tạo sẵn thực đơn bánh mì, xôi mặn (9 món có công thức định lượng ước tính, 18 nguyên liệu, nhóm topping / size),
+một phiếu nhập kho đầu kỳ để bán thử ngay, ngừng kinh doanh hàng tạp hóa không phải đồ uống và đổi tên cửa hàng.
+Chạy lại nhiều lần không tạo trùng; giá và định lượng sửa trong trang Sản phẩm / Tùy chọn món.
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m scripts.setup_food_store            # thêm --no-opening-stock nếu tự nhập kho
+```
+
 ## In phiếu bếp không cần bấm hộp thoại in
 
 Trình duyệt luôn hỏi trước khi in. Ở máy quầy / máy bếp có máy in nhiệt 80mm làm máy in mặc định, mở Chrome với cờ
