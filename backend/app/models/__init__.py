@@ -1,4 +1,5 @@
 # Import mọi model ở đây để Alembic (autogenerate) và SQLAlchemy nhìn thấy đầy đủ metadata
+from app.models.attendance import TimeEntry
 from app.models.catalog import Brand, Category, Inventory, Product
 from app.models.partner import Customer, Supplier
 from app.models.purchasing import PurchaseOrder, PurchaseOrderItem, PurchaseStatus
@@ -53,6 +54,7 @@ __all__ = [
     "StockAdjustment",
     "StockAdjustmentItem",
     "Supplier",
+    "TimeEntry",
     "TransactionType",
     "User",
 ]

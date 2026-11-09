@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, Outlet, useMatches, useNavigate, useNavigation } from "react-router";
 import { toast } from "sonner";
 
+import { ClockButton } from "@/features/attendance/ClockButton";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ThemeMenu } from "@/features/theme/ThemeMenu";
 
@@ -136,6 +137,7 @@ export function AppLayout() {
         <div className="min-w-0 flex-1">
           <Breadcrumb />
         </div>
+        <ClockButton />
         <ThemeMenu />
         <UserMenu />
       </header>

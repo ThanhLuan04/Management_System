@@ -39,9 +39,11 @@ export function RequirePermission({ permission, children }: { permission: Permis
   return <>{children}</>;
 }
 
-/** Trang chủ theo vai trò: Thu ngân vào màn hình Bán hàng, mọi vai trò khác vào Tổng quan. */
+/** Trang chủ theo vai trò: Thu ngân → Bán hàng, Nhân viên bếp → Chấm công, Admin / Quản lý → Tổng quan. */
 export function homePath(user: Pick<Me, "role">): string {
-  return user.role.code === "CASHIER" ? "/pos" : "/dashboard";
+  if (user.role.code === "CASHIER") return "/pos";
+  if (user.role.code === "KITCHEN") return "/attendance";
+  return "/dashboard";
 }
 
 export function HomeRedirect() {

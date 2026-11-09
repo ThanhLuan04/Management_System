@@ -5,6 +5,7 @@ class RoleCode(StrEnum):
     ADMIN = "ADMIN"
     MANAGER = "MANAGER"
     CASHIER = "CASHIER"
+    KITCHEN = "KITCHEN"  # Nhân viên bếp: chấm công, (sau này) màn hình bếp — không xem tiền / báo cáo
 
 
 class Permission(StrEnum):
@@ -26,10 +27,15 @@ class Permission(StrEnum):
     REPORTS_VIEW = "reports.view"
     REPORTS_OWN_SALES = "reports.own_sales"
     COST_VIEW = "cost.view"
+    ATTENDANCE_SELF = "attendance.self"  # tự chấm công vào / ra ca
+    ATTENDANCE_MANAGE = "attendance.manage"  # xem bảng công, lương; sửa giờ khi quên chấm
 
+
+_KITCHEN = frozenset({Permission.ATTENDANCE_SELF})
 
 _CASHIER = frozenset(
     {
+        Permission.ATTENDANCE_SELF,
         Permission.CATALOG_VIEW,
         Permission.INVENTORY_VIEW,
         Permission.CUSTOMERS_VIEW,
@@ -49,6 +55,7 @@ _MANAGER = _CASHIER | {
     Permission.ORDERS_CANCEL,
     Permission.REPORTS_VIEW,
     Permission.COST_VIEW,
+    Permission.ATTENDANCE_MANAGE,
 }
 
 # Ma trận phân quyền — xem docs/01-business-spec.md §3
@@ -56,6 +63,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     RoleCode.ADMIN: frozenset(Permission),
     RoleCode.MANAGER: frozenset(_MANAGER),
     RoleCode.CASHIER: _CASHIER,
+    RoleCode.KITCHEN: _KITCHEN,
 }
 
 

@@ -21,31 +21,34 @@ SmartStore là website quản lý bán hàng giúp cửa hàng quản lý sản 
 | **Admin** (Quản trị viên) | Chủ cửa hàng / người phụ trách hệ thống | Toàn quyền, quản lý tài khoản, xem audit log, cấu hình |
 | **Manager** (Quản lý) | Quản lý cửa hàng | Nhập hàng, kho, đơn hàng, khách hàng, báo cáo |
 | **Cashier** (Thu ngân) | Nhân viên bán hàng | Bán hàng nhanh, tra cứu, đổi trả trong giới hạn |
+| **Kitchen** (Nhân viên bếp) | Nhân viên làm đồ ăn (bổ sung sau MVP) | Chấm công vào / ra ca; không xem tiền, bán hàng hay báo cáo |
 
 ## 3. Ma trận phân quyền
 
 Quyền được định nghĩa bằng mã (permission code) trong backend; mỗi vai trò có một tập quyền cố định. **Mọi endpoint đều kiểm tra quyền ở backend.**
 
-| Mã quyền | Mô tả | Admin | Manager | Cashier |
-|---|---|:-:|:-:|:-:|
-| `users.manage` | Quản lý tài khoản, vai trò, khóa/mở | ✅ | | |
-| `settings.manage` | Cấu hình cửa hàng, chính sách | ✅ | | |
-| `audit.view` | Xem nhật ký kiểm toán | ✅ | | |
-| `catalog.view` | Xem sản phẩm, danh mục, thương hiệu | ✅ | ✅ | ✅ |
-| `catalog.manage` | Thêm/sửa sản phẩm, danh mục, thương hiệu | ✅ | ✅ | |
-| `suppliers.manage` | Xem/thêm/sửa nhà cung cấp | ✅ | ✅ | |
-| `purchases.manage` | Tạo, sửa nháp, xác nhận, hủy phiếu nhập | ✅ | ✅ | |
-| `inventory.view` | Xem tồn kho, lịch sử kho | ✅ | ✅ | ✅ (chỉ số lượng) |
-| `inventory.adjust` | Điều chỉnh kho, kiểm kê | ✅ | ✅ | |
-| `customers.view` | Tra cứu khách hàng | ✅ | ✅ | ✅ |
-| `customers.manage` | Thêm/sửa khách hàng | ✅ | ✅ | ✅ (thêm, sửa liên hệ) |
-| `orders.create` | Bán hàng tại POS | ✅ | ✅ | ✅ |
-| `orders.view` | Xem danh sách/chi tiết đơn | ✅ | ✅ | ✅ |
-| `orders.cancel` | Hủy đơn | ✅ | ✅ | |
-| `returns.create` | Tạo phiếu hoàn trả | ✅ | ✅ | ✅ |
-| `reports.view` | Báo cáo doanh thu, lợi nhuận, tồn kho | ✅ | ✅ | |
-| `reports.own_sales` | Xem doanh số của chính mình | ✅ | ✅ | ✅ |
-| `cost.view` | Xem giá vốn, lợi nhuận | ✅ | ✅ | |
+| Mã quyền | Mô tả | Admin | Manager | Cashier | Kitchen |
+|---|---|:-:|:-:|:-:|:-:|
+| `users.manage` | Quản lý tài khoản, vai trò, khóa/mở | ✅ | | | |
+| `settings.manage` | Cấu hình cửa hàng, chính sách | ✅ | | | |
+| `audit.view` | Xem nhật ký kiểm toán | ✅ | | | |
+| `catalog.view` | Xem sản phẩm, danh mục, thương hiệu | ✅ | ✅ | ✅ | |
+| `catalog.manage` | Thêm/sửa sản phẩm, danh mục, thương hiệu | ✅ | ✅ | | |
+| `suppliers.manage` | Xem/thêm/sửa nhà cung cấp | ✅ | ✅ | | |
+| `purchases.manage` | Tạo, sửa nháp, xác nhận, hủy phiếu nhập | ✅ | ✅ | | |
+| `inventory.view` | Xem tồn kho, lịch sử kho | ✅ | ✅ | ✅ (chỉ số lượng) | |
+| `inventory.adjust` | Điều chỉnh kho, kiểm kê | ✅ | ✅ | | |
+| `customers.view` | Tra cứu khách hàng | ✅ | ✅ | ✅ | |
+| `customers.manage` | Thêm/sửa khách hàng | ✅ | ✅ | ✅ (thêm, sửa liên hệ) | |
+| `orders.create` | Bán hàng tại POS | ✅ | ✅ | ✅ | |
+| `orders.view` | Xem danh sách/chi tiết đơn | ✅ | ✅ | ✅ | |
+| `orders.cancel` | Hủy đơn | ✅ | ✅ | | |
+| `returns.create` | Tạo phiếu hoàn trả | ✅ | ✅ | ✅ | |
+| `reports.view` | Báo cáo doanh thu, lợi nhuận, tồn kho | ✅ | ✅ | | |
+| `reports.own_sales` | Xem doanh số của chính mình | ✅ | ✅ | ✅ | |
+| `cost.view` | Xem giá vốn, lợi nhuận | ✅ | ✅ | | |
+| `attendance.self` | Vào / ra ca, xem giờ công và lương tạm tính của mình | ✅ | ✅ | ✅ | ✅ |
+| `attendance.manage` | Bảng công mọi người, thêm / sửa / xóa lượt chấm công | ✅ | ✅ | | |
 
 Giới hạn giảm giá trên một đơn: Cashier ≤ **10%**, Manager ≤ **30%**, Admin không giới hạn. Các mức này cấu hình được trong Cài đặt.
 
@@ -208,6 +211,7 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-R03** Tiền hoàn mỗi dòng = `round(line_total × SL_trả / SL_bán)`. Nếu lần trả này trả hết phần còn lại của dòng, tiền hoàn = `line_total − tiền đã hoàn trước đó` để không lệch do làm tròn.
 - **BR-R04** Tình trạng hàng `RESELLABLE` thì cộng lại kho, `DAMAGED` thì không cộng.
 - **BR-R05** Hoàn tiền bằng phương thức khách đã trả. Đơn trả kết hợp: thu ngân chọn phương thức hoàn trước (mặc định tiền mặt), phần vượt số tiền còn lại đã thu bằng phương thức đó tự hoàn bằng phương thức khác — không phương thức nào hoàn quá số đã thu. Hủy đơn hoàn từng khoản đúng phương thức. Lý do trả bắt buộc.
+- **BR-R06** Trả hết mọi dòng thì đơn có `return_status = FULL`. Giá trị này được **tính từ dữ liệu**, không lưu trùng.
 
 ### Ca làm việc (bổ sung sau MVP)
 
@@ -215,7 +219,16 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-SH02** Bán hàng, trả hàng, hủy đơn **bắt buộc có ca đang mở** (máy chủ chặn: `NO_OPEN_SHIFT`). Tiền thu gắn vào ca lúc bán; tiền hoàn gắn vào ca đang mở lúc hoàn (có thể khác ca đã bán).
 - **BR-SH03** Mở ca: nhập tiền đầu ca (gợi ý = tiền đếm được lúc đóng ca trước). Đóng ca: nhập tiền đếm thực tế; `tiền mặt phải có = tiền đầu ca + thu tiền mặt − hoàn tiền mặt`; `chênh lệch = tiền đếm − tiền phải có`; lệch khác 0 bắt buộc ghi lý do. Số liệu chốt lúc đóng ca, không đổi về sau.
 - **BR-SH04** Đóng ca chờ các giao dịch đang thực hiện hoàn tất rồi mới cộng số liệu — không giao dịch nào lọt ra ngoài ca. Không có thu/chi tiền mặt khác trong ca (rút/bổ sung tiền ghi vào lý do chênh lệch).
-- **BR-SH05** Thu ngân xem và đóng ca hiện tại; Quản lý, Admin xem lịch sử ca, lọc ca lệch tiền, xem doanh số từng thu ngân trong ca.- **BR-R06** Trả hết mọi dòng thì đơn có `return_status = FULL`. Giá trị này được **tính từ dữ liệu**, không lưu trùng.
+- **BR-SH05** Thu ngân xem và đóng ca hiện tại; Quản lý, Admin xem lịch sử ca, lọc ca lệch tiền, xem doanh số từng thu ngân trong ca.
+
+### Chấm công (bổ sung sau MVP)
+
+- **BR-AT01** Mỗi nhân viên tự bấm **Vào ca / Ra ca**; mỗi người chỉ có **một lượt đang mở** (database chặn lượt thứ hai: `ALREADY_CLOCKED_IN`). Chấm công độc lập với ca két tiền.
+- **BR-AT02** Lương theo giờ đặt ở tài khoản nhân viên và được **chốt vào lượt lúc vào ca**: đổi mức lương không làm thay đổi các lượt cũ. Tiền công lượt = `round(số phút × lương/giờ / 60)`.
+- **BR-AT03** Bảng công cộng các lượt **đã ra ca** trong kỳ (theo ngày vào ca, giờ Việt Nam). Lượt đang mở không tính tiền; mở quá **16 giờ** được đánh dấu "quên ra ca?" để quản lý xử lý.
+- **BR-AT04** Quản lý / Admin thêm, sửa, xóa lượt khi nhân viên quên chấm; **bắt buộc lý do**, ghi nhật ký thao tác. Lượt hợp lệ: ra sau vào, dài tối đa 24 giờ, không ở tương lai, không chồng lên lượt khác của cùng người (`TIME_OVERLAP`).
+- **BR-AT05** Quản lý không được tự thêm / sửa / xóa chấm công của chính mình (chỉ Admin), tránh tự cộng giờ. Lương tạm tính chỉ để tham khảo, chưa gồm phụ cấp, khấu trừ.
+
 
 ### 7.6 Tồn kho
 

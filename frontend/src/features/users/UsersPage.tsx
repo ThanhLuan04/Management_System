@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { FormField, Input } from "@/components/ui/Input";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Select } from "@/components/ui/Select";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ActiveBadge } from "@/features/catalog/components";
@@ -24,7 +25,7 @@ import { formatDateTime } from "@/utils/format";
 import { type UserRow, useCreateUser, useResetPassword, useRoles, useSetUserStatus, useUpdateUser, useUsers } from "./api";
 import { PASSWORD_HINT, passwordSchema } from "./passwordSchema";
 
-const ROLE_VARIANTS = { ADMIN: "destructive", MANAGER: "info", CASHIER: "default" } as const;
+const ROLE_VARIANTS = { ADMIN: "destructive", MANAGER: "info", CASHIER: "default", KITCHEN: "warning" } as const;
 
 const optionalEmail = z.string().trim().refine((v) => v === "" || z.email().safeParse(v).success, "Email không hợp lệ");
 const optionalPhone = z.string().trim().refine((v) => v === "" || /^\+?[0-9][0-9 .-]{7,18}$/.test(v), "Số điện thoại không hợp lệ");
@@ -36,6 +37,7 @@ const createSchema = z.object({
   email: optionalEmail,
   phone: optionalPhone,
   role_id: z.string().min(1, "Vui lòng chọn vai trò"),
+  hourly_rate: z.string(), // chữ số từ MoneyInput; rỗng = chưa đặt
 });
 type CreateValues = z.infer<typeof createSchema>;
 
@@ -49,6 +51,7 @@ function UserDialog({ open, onOpenChange, editing, isSelf }: { open: boolean; on
   const saving = create.isPending || update.isPending;
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setError,
@@ -64,6 +67,7 @@ function UserDialog({ open, onOpenChange, editing, isSelf }: { open: boolean; on
         email: editing?.email ?? "",
         phone: editing?.phone ?? "",
         role_id: editing ? String(editing.role.id) : "",
+        hourly_rate: editing?.hourly_rate ? String(Math.round(Number(editing.hourly_rate))) : "",
       });
     }
   }, [open, editing, reset]);
@@ -83,6 +87,7 @@ function UserDialog({ open, onOpenChange, editing, isSelf }: { open: boolean; on
       email: values.email || null,
       phone: values.phone || null,
       role_id: Number(values.role_id),
+      hourly_rate: values.hourly_rate || null,
     };
     if (editing) {
       update.mutate(isSelf ? { ...common, role_id: undefined } : common, {
@@ -160,6 +165,13 @@ function UserDialog({ open, onOpenChange, editing, isSelf }: { open: boolean; on
         </FormField>
         <FormField label="Số điện thoại" htmlFor="u-phone" error={errors.phone?.message}>
           <Input id="u-phone" invalid={!!errors.phone} {...register("phone")} />
+        </FormField>
+        <FormField label="Lương theo giờ" htmlFor="u-rate" error={errors.hourly_rate?.message} hint="Dùng để tạm tính lương khi chấm công; để trống nếu không tính">
+          <Controller
+            control={control}
+            name="hourly_rate"
+            render={({ field }) => <MoneyInput id="u-rate" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />}
+          />
         </FormField>
       </form>
     </Dialog>

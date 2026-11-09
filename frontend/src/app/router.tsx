@@ -104,6 +104,7 @@ export const router = createBrowserRouter([
 
       // Phân tích & hệ thống
       page("reports", "Báo cáo", P.REPORTS_VIEW, async () => (await import("@/features/reports/ReportsPage")).ReportsPage),
+      page("attendance", "Chấm công", P.ATTENDANCE_SELF, async () => (await import("@/features/attendance/AttendancePage")).AttendancePage),
       page("users", "Người dùng", P.USERS_MANAGE, async () => (await import("@/features/users/UsersPage")).UsersPage),
       page("settings", "Cài đặt", P.SETTINGS_MANAGE, async () => (await import("@/features/system/SettingsPage")).SettingsPage),
       page("audit-logs", "Nhật ký thao tác", P.AUDIT_VIEW, async () => (await import("@/features/system/AuditLogPage")).AuditLogPage),

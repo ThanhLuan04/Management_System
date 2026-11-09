@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { http } from "@/services/http";
-import type { Page, Role } from "@/types/api";
+import type { Money, Page, Role } from "@/types/api";
 
 export interface UserRow {
   id: number;
@@ -11,6 +11,8 @@ export interface UserRow {
   phone: string | null;
   role: Role;
   is_active: boolean;
+  /** Lương/giờ cho chấm công; null = chưa đặt */
+  hourly_rate: Money | null;
   last_login_at: string | null;
   created_at: string;
 }

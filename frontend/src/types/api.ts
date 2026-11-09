@@ -16,7 +16,7 @@ export interface FieldError {
 
 export interface Role {
   id: number;
-  code: "ADMIN" | "MANAGER" | "CASHIER";
+  code: "ADMIN" | "MANAGER" | "CASHIER" | "KITCHEN";
   name: string;
 }
 

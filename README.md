@@ -30,13 +30,15 @@ Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](doc
   gợi ý tiền khách đưa, in hóa đơn 80mm, phím tắt F2/F9.
 - **Ca làm việc (két chung):** mở ca với tiền đầu ca, mọi giao dịch tiền gắn vào ca, đóng ca đếm két — hệ thống tính
   tiền mặt phải có và chênh lệch (lệch phải ghi lý do); lịch sử ca với doanh số từng thu ngân.
+- **Chấm công:** nhân viên bấm Vào ca / Ra ca ngay trên thanh tiêu đề; lương theo giờ chốt lúc vào ca; bảng công
+  tổng giờ và lương tạm tính theo tháng, cảnh báo quên ra ca; quản lý sửa giờ phải ghi lý do.
 - **Đơn hàng & trả hàng:** hủy đơn trong ngày, trả hàng trong thời hạn cấu hình (mặc định 7 ngày),
   hàng còn bán được nhập lại kho, hàng hỏng thì không; tiền hoàn tính theo giá sau giảm giá.
 - **Nhập hàng:** phiếu nháp → xác nhận nhập kho; giá vốn bình quân gia quyền được tính lại sau mỗi lần nhập.
 - **Tồn kho:** mọi thay đổi đều có chứng từ trong sổ cái kho; điều chỉnh kho và kiểm kê; cảnh báo sắp hết hàng.
 - **Báo cáo:** doanh thu, giá vốn, lợi nhuận gộp theo ngày/tuần/tháng (giờ Việt Nam), sản phẩm bán chạy,
   giá trị tồn kho, nhập hàng theo nhà cung cấp; xuất CSV mở được bằng Excel.
-- **Quản trị:** 3 vai trò (Admin, Quản lý, Thu ngân) với phân quyền ở backend, quản lý tài khoản,
+- **Quản trị:** 4 vai trò (Admin, Quản lý, Thu ngân, Nhân viên bếp) với phân quyền ở backend, quản lý tài khoản,
   cài đặt cửa hàng, nhật ký thao tác (ai sửa gì, giá trị cũ → mới).
 
 Đặc tả đầy đủ: [docs/01-business-spec.md](docs/01-business-spec.md).

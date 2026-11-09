@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Boxes,
+  CalendarClock,
   ClipboardList,
   Clock,
   FolderTree,
@@ -61,6 +62,10 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Phân tích",
     items: [{ to: "/reports", label: "Báo cáo", icon: BarChart3, permission: P.REPORTS_VIEW }],
+  },
+  {
+    label: "Nhân sự",
+    items: [{ to: "/attendance", label: "Chấm công", icon: CalendarClock, permission: P.ATTENDANCE_SELF }],
   },
   {
     label: "Hệ thống",

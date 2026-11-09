@@ -102,6 +102,25 @@ Quên mật khẩu Admin khi chưa có email: chạy `python -m scripts.reset_pa
 
 `POST /orders`, `POST /orders/{id}/returns`, `POST /orders/{id}/cancel` trả `409 NO_OPEN_SHIFT` khi chưa mở ca.
 
+### Chấm công (bổ sung sau MVP)
+
+K = Kitchen (Nhân viên bếp).
+
+| Method | URL | Mô tả | Quyền |
+|---|---|---|---|
+| POST | `/attendance/clock-in` | Vào ca; đang có lượt mở → `409 ALREADY_CLOCKED_IN` | A M C K |
+| POST | `/attendance/clock-out` | Ra ca; chưa vào → `409 NOT_CLOCKED_IN` | A M C K |
+| GET | `/attendance/me` | Lượt đang mở, tổng giờ / lương tạm tính tháng này, 10 lượt gần nhất | A M C K |
+| GET | `/attendance/summary` | Bảng công theo người (`date_from`, `date_to`; mặc định đầu tháng → hôm nay) | A M |
+| GET | `/attendance` | Danh sách lượt (`user_id`, `date_from`, `date_to`, phân trang) | A M |
+| GET | `/attendance/staff` | Nhân viên đang làm việc: chỉ `id`, họ tên, vai trò (để chọn khi thêm lượt) | A M |
+| POST | `/attendance` | Thêm lượt `{user_id, clock_in_at, clock_out_at, reason}` | A M |
+| PATCH | `/attendance/{id}` | Sửa giờ `{clock_in_at, clock_out_at?, reason}` | A M |
+| DELETE | `/attendance/{id}?reason=` | Xóa lượt chấm nhầm | A M |
+
+Thời gian gửi lên phải kèm múi giờ (ISO 8601). Lỗi giờ không hợp lệ: `422 INVALID_TIME_RANGE`; chồng lượt khác: `409 TIME_OVERLAP`;
+Quản lý thêm / sửa / xóa lượt của chính mình: `403`. `UserCreate` / `UserUpdate` có thêm `hourly_rate` (đồng, số nguyên ≥ 0, có thể `null`).
+
 ### Users và hệ thống
 
 | Method | URL | Mô tả | Quyền |

@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
@@ -8,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Index,
+    Numeric,
     SmallInteger,
     String,
     func,
@@ -40,6 +42,8 @@ class User(TimestampMixin, Base):
     failed_login_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Lương theo giờ dùng cho chấm công (Admin đặt); null = chưa đặt
+    hourly_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
 
     # Vai trò luôn cần khi kiểm tra quyền nên nạp kèm user
     role: Mapped[Role] = relationship(lazy="joined")

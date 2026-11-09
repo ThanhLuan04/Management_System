@@ -18,7 +18,7 @@ SORTABLE_FIELDS = {
 }
 
 # Các trường được phép ghi vào audit khi sửa user
-_AUDITED_FIELDS = ("full_name", "email", "phone", "role_id", "is_active")
+_AUDITED_FIELDS = ("full_name", "email", "phone", "role_id", "is_active", "hourly_rate")
 
 
 def list_roles(db: Session) -> list[Role]:
@@ -103,6 +103,7 @@ def create_user(db: Session, data: UserCreate, actor_id: int | None, ip: str | N
         email=data.email,
         phone=data.phone,
         role=role,
+        hourly_rate=data.hourly_rate,
     )
     db.add(user)
     db.flush()  # lấy user.id cho audit log
