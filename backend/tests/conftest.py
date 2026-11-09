@@ -37,7 +37,7 @@ from app.core.security import hash_password  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.db.session import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import CashShift, Role, ShiftStatus, User  # noqa: E402  — import gói models cũng nạp toàn bộ bảng vào Base.metadata
+from app.models import CashShift, Role, Setting, ShiftStatus, User  # noqa: E402  — import gói models cũng nạp toàn bộ bảng vào Base.metadata
 from app.services.settings_service import DEFAULTS as SETTING_DEFAULTS  # noqa: E402
 
 DEFAULT_PASSWORD = "Passw0rd!"
@@ -141,6 +141,13 @@ def open_shift(db, make_user):
     db.add(shift)
     db.commit()
     return shift
+
+
+@pytest.fixture
+def kitchen_screen(db):
+    """Bật màn hình bếp (mặc định tắt: quán in phiếu bếp đưa cho bếp)."""
+    db.merge(Setting(key="kitchen_screen_enabled", value=True))
+    db.commit()
 
 
 def login(client: TestClient, username: str, password: str = DEFAULT_PASSWORD):

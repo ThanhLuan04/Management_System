@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Spinner";
-import { KITCHEN_LABELS, type KitchenStatus, SERVICE_LABELS } from "@/features/sales/api";
+import { KITCHEN_LABELS, type KitchenStatus, SERVICE_LABELS, useStoreSettings } from "@/features/sales/api";
 import { toApiError } from "@/services/apiError";
 import { cn } from "@/utils/cn";
 import { formatNumber } from "@/utils/format";
@@ -186,6 +186,7 @@ function TicketCard({
 
 export function KitchenPage() {
   const { data, error, isPending, refetch } = useKitchenTickets();
+  const store = useStoreSettings();
   const action = useKitchenAction();
   const [now, setNow] = useState(() => Date.now());
   const [sound, setSound] = useState(readSoundSetting);
@@ -250,6 +251,11 @@ export function KitchenPage() {
           </Button>
         }
       />
+      {store.data?.kitchen_screen_enabled === false && (
+        <p role="status" className="mb-4 rounded-lg bg-warning-soft px-4 py-3 text-sm text-warning-strong">
+          Màn hình bếp đang tắt: đơn mới không hiện ở đây — thu ngân in phiếu bếp đưa cho bếp. Admin bật lại trong Cài đặt → Bếp.
+        </p>
+      )}
       {error && !data ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (

@@ -114,6 +114,17 @@ export function PosPage() {
     idempotencyKey.current = newIdempotencyKey();
   }, []);
 
+  // Thanh toán xong đơn có món: tự in phiếu bếp để đưa cho bếp (bật / tắt trong Cài đặt → Bếp).
+  // Chạy sau khi phiếu đã được gắn vào trang (effect chạy sau render).
+  const autoPrintKitchen = store.data?.auto_print_kitchen_ticket === true;
+  const autoPrinted = useRef<number | null>(null); // mỗi đơn chỉ tự in một lần
+  useEffect(() => {
+    if (!lastOrder || !autoPrintKitchen || autoPrinted.current === lastOrder.id) return;
+    if (!lastOrder.items.some((i) => i.is_dish)) return;
+    autoPrinted.current = lastOrder.id;
+    printKitchenTicket();
+  }, [lastOrder, autoPrintKitchen]);
+
   // Món có nhóm tùy chọn (size, topping) → mở hộp chọn trước khi thêm vào giỏ
   const [choosing, setChoosing] = useState<Product | null>(null);
 

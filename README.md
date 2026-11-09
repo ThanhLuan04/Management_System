@@ -37,7 +37,8 @@ Thêm ảnh: [đăng nhập](docs/screenshots/01-login.png) · [đơn hàng](doc
   thêm; quầy mở hộp chọn khi bấm món, phiếu bếp và hóa đơn in kèm lựa chọn.
 - **Tại chỗ / mang đi và bếp:** số thứ tự tự động trong ngày, số bàn, ghi chú từng món ("không hành");
   màn hình bếp theo từng món (chờ → đang làm → xong → đã giao) tự cập nhật, âm báo phiếu mới, cảnh báo đơn bị hủy;
-  in phiếu bếp 80mm không có giá.
+  in phiếu bếp 80mm không có giá. Quán chưa có người làm bếp dùng hệ thống: tắt màn hình bếp, thanh toán xong
+  tự in phiếu bếp để đưa cho bếp (Cài đặt → Bếp).
 - **Chấm công:** nhân viên bấm Vào ca / Ra ca ngay trên thanh tiêu đề; lương theo giờ chốt lúc vào ca; bảng công
   tổng giờ và lương tạm tính theo tháng, cảnh báo quên ra ca; quản lý sửa giờ phải ghi lý do.
 - **Đơn hàng & trả hàng:** hủy đơn trong ngày, trả hàng trong thời hạn cấu hình (mặc định 7 ngày),

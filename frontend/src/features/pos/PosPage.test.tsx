@@ -98,7 +98,7 @@ vi.mock("@/services/http", () => ({
   http: {
     get: vi.fn(async (url: string) => {
       if (url === "/settings") {
-        return { data: { store_name: "SmartStore", store_address: "", store_phone: "", return_window_days: 7, my_max_discount_percent: "10" } };
+        return { data: { store_name: "SmartStore", store_address: "", store_phone: "", return_window_days: 7, my_max_discount_percent: "10", auto_print_kitchen_ticket: true, kitchen_screen_enabled: false } };
       }
       if (url === "/products") return { data: { items: [MILK, WATER, PHO, BUN], page: 1, page_size: 8, total: 4 } };
       if (url === "/shifts/current") return { data: { shift: SHIFT, suggested_opening_cash: "500000.00" } };
@@ -168,6 +168,8 @@ describe("PosPage — quán ăn", () => {
       items: [{ id: 1, product_id: 9, product_name: "Phở bò", quantity: 2, note: "không hành", options: [], is_dish: true, kitchen_status: "NEW" }],
     };
     vi.mocked(http.post).mockImplementationOnce(async () => ({ data: order }));
+    const printed: (string | undefined)[] = [];
+    const print = vi.spyOn(window, "print").mockImplementation(() => void printed.push(document.body.dataset.print));
     renderPos();
     const pho = await screen.findByRole("button", { name: /^Thêm Phở bò.*còn 6 phần/ });
     await userEvent.click(pho);
@@ -191,6 +193,9 @@ describe("PosPage — quán ăn", () => {
 
     expect(await screen.findByText(/Số thứ tự:/)).toHaveTextContent("12 · Bàn 5");
     expect(screen.getByRole("button", { name: /In phiếu bếp/ })).toBeInTheDocument();
+    // Thanh toán xong tự in phiếu bếp (không phải hóa đơn), đúng một lần
+    await vi.waitFor(() => expect(printed).toEqual(["kitchen"]));
+    print.mockRestore();
     expect(orderCalls()[0][1]).toMatchObject({
       items: [
         { product_id: 9, quantity: 2, note: "không hành" },

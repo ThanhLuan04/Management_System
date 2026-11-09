@@ -131,6 +131,10 @@ export interface StoreSettings {
   bank_bin: string;
   bank_account_number: string;
   bank_account_name: string;
+  /** Bật: đơn có món tạo phiếu trên màn hình bếp. Tắt: thu ngân in phiếu bếp đưa cho bếp */
+  kitchen_screen_enabled: boolean;
+  /** Thanh toán xong đơn có món thì tự mở lệnh in phiếu bếp */
+  auto_print_kitchen_ticket: boolean;
   my_max_discount_percent: Money | null;
 }
 

@@ -144,6 +144,10 @@ class SettingsOut(BaseModel):
     bank_bin: str = ""
     bank_account_number: str = ""
     bank_account_name: str = ""
+    kitchen_screen_enabled: bool = Field(False, description="Bật: đơn có món tạo phiếu trên màn hình bếp")
+    auto_print_kitchen_ticket: bool = Field(
+        True, description="Thanh toán xong đơn có món thì tự in phiếu bếp"
+    )
     max_discount_percent_cashier: Decimal | None = None
     max_discount_percent_manager: Decimal | None = None
     my_max_discount_percent: Decimal | None = Field(

@@ -127,6 +127,8 @@ và `unit_price` đã gồm giá lựa chọn; phiếu bếp trả `items[].opti
 `POST /orders` nhận thêm `service_type` (`DINE_IN` / `TAKEAWAY`, đơn có món mặc định `TAKEAWAY`), `table_label` (bắt buộc khi `DINE_IN`)
 và `items[].note`. Đơn trả về có `service_type`, `table_label`, `queue_number` (số thứ tự trong ngày, chỉ đơn có món); dòng đơn có `note`, `kitchen_status`.
 Đổi trạng thái món của đơn đã hủy: `409 ORDER_CANCELLED`.
+Cài đặt (`GET` / `PATCH /settings`) có thêm `kitchen_screen_enabled` (mặc định `false`: dòng món tạo ra ở trạng thái `SERVED`,
+không lên màn hình bếp; tắt thì phiếu đang chờ chuyển `SERVED`) và `auto_print_kitchen_ticket` (mặc định `true`).
 
 ### Chấm công (bổ sung sau MVP)
 

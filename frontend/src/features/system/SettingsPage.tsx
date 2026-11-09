@@ -26,6 +26,8 @@ interface AdminSettings {
   bank_bin: string;
   bank_account_number: string;
   bank_account_name: string;
+  kitchen_screen_enabled: boolean;
+  auto_print_kitchen_ticket: boolean;
   max_discount_percent_cashier: Money;
   max_discount_percent_manager: Money;
 }
@@ -49,6 +51,8 @@ const schema = z.object({
     .trim()
     .refine((v) => v === "" || /^[0-9A-Za-z]{1,19}$/.test(v), "Số tài khoản gồm 1–19 chữ/số, không dấu cách"),
   bank_account_name: z.string().trim().max(50, "Tối đa 50 ký tự"),
+  kitchen_screen_enabled: z.boolean(),
+  auto_print_kitchen_ticket: z.boolean(),
 }).superRefine((v, ctx) => {
   // Ngân hàng và số tài khoản phải có cùng nhau (để trống cả hai = không dùng QR)
   if (v.bank_bin && !v.bank_account_number) ctx.addIssue({ code: "custom", path: ["bank_account_number"], message: "Nhập số tài khoản nhận tiền" });
@@ -89,6 +93,8 @@ export function SettingsPage() {
         bank_bin: s.bank_bin,
         bank_account_number: s.bank_account_number,
         bank_account_name: s.bank_account_name,
+        kitchen_screen_enabled: s.kitchen_screen_enabled,
+        auto_print_kitchen_ticket: s.auto_print_kitchen_ticket,
       });
     }
   }, [settings.data, reset]);
@@ -140,6 +146,29 @@ export function SettingsPage() {
             <FormField label="Thời hạn đổi trả (ngày)" htmlFor="s-window" required error={errors.return_window_days?.message}>
               <Input id="s-window" inputMode="numeric" invalid={!!errors.return_window_days} {...register("return_window_days")} />
             </FormField>
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader title="Bếp" description="Cách báo cho bếp làm món sau khi thu ngân thanh toán" />
+          <CardContent className="space-y-3 text-sm">
+            <label className="flex items-start gap-2">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" {...register("auto_print_kitchen_ticket")} />
+              <span>
+                <span className="font-medium">Tự in phiếu bếp sau khi thanh toán</span>
+                <span className="block text-muted">
+                  Đơn có món: in phiếu (số thứ tự, món, topping, ghi chú — không có giá) để đưa cho bếp. Muốn in thẳng không hiện hộp thoại in, xem hướng dẫn Chrome --kiosk-printing trong README.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" {...register("kitchen_screen_enabled")} />
+              <span>
+                <span className="font-medium">Dùng màn hình bếp</span>
+                <span className="block text-muted">
+                  Bật khi có người làm bếp dùng hệ thống (tài khoản vai trò Nhân viên bếp): món hiện trên màn hình Bếp, bếp bấm làm xong / đã giao. Tắt thì các phiếu đang chờ được coi như đã giao.
+                </span>
+              </span>
+            </label>
           </CardContent>
         </Card>
         <Card className="lg:col-span-2">

@@ -8,7 +8,7 @@ from app.core.permissions import RoleCode
 from tests.factories import make_category, make_product, set_stock
 from tests.integration.test_recipes import dish, ingredient
 
-pytestmark = pytest.mark.usefixtures("open_shift")
+pytestmark = pytest.mark.usefixtures("open_shift", "kitchen_screen")
 
 ORDERS = "/api/v1/orders"
 KITCHEN = "/api/v1/kitchen"
@@ -165,3 +165,19 @@ def test_kitchen_role_cannot_sell_or_see_money(client, cook, menu):
     assert sell(client, cook, [(menu["pho"], 1, None)]).status_code == 403
     assert client.get(ORDERS, headers=cook).status_code == 403
     assert client.get(f"{KITCHEN}/tickets", headers=cook).status_code == 200
+
+
+# ---------- Tắt màn hình bếp ----------
+
+
+def test_turning_the_kitchen_screen_off_clears_waiting_tickets(client, cashier, cook, menu, auth_headers):
+    admin = auth_headers(RoleCode.ADMIN, username="admin")
+    sell(client, cashier, [(menu["pho"], 1, None)])
+    assert len(tickets(client, cook)) == 1
+
+    assert (
+        client.patch("/api/v1/settings", headers=admin, json={"kitchen_screen_enabled": False}).status_code
+        == 200
+    )
+
+    assert tickets(client, cook) == []

@@ -27,3 +27,5 @@ class SettingsUpdate(StrictModel):
         Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^([0-9A-Za-z]{1,19})?$")] | None
     ) = None
     bank_account_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)] | None = None
+    kitchen_screen_enabled: bool | None = None
+    auto_print_kitchen_ticket: bool | None = None

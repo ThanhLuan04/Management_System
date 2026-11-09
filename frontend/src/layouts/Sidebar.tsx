@@ -2,11 +2,18 @@ import { NavLink } from "react-router";
 
 import { BRAND_ICON, NAV_GROUPS } from "@/app/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { useStoreSettings } from "@/features/sales/api";
 import { cn } from "@/utils/cn";
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { can } = useAuth();
-  const groups = NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter((i) => can(i.permission)) })).filter(
+  const store = useStoreSettings();
+  // Quán không dùng màn hình bếp (thu ngân in phiếu đưa bếp) → ẩn mục Bếp
+  const hidden = (to: string) => to === "/kitchen" && store.data?.kitchen_screen_enabled === false;
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((i) => can(i.permission) && !hidden(i.to)),
+  })).filter(
     (group) => group.items.length > 0,
   );
   const Brand = BRAND_ICON;

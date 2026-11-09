@@ -1,10 +1,11 @@
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from app.core.permissions import RoleCode
-from app.models import Setting, User
+from app.models import KitchenStatus, SalesOrderItem, Setting, User
 from app.schemas.report import SettingsOut
 from app.services import audit_service
 
@@ -20,6 +21,9 @@ DEFAULTS: dict[str, Any] = {
     "bank_bin": "",
     "bank_account_number": "",
     "bank_account_name": "",
+    # Quán chưa có người làm bếp dùng hệ thống: tắt màn hình bếp, thu ngân in phiếu bếp đưa cho bếp
+    "kitchen_screen_enabled": False,
+    "auto_print_kitchen_ticket": True,
 }
 
 
@@ -39,6 +43,8 @@ def settings_out(db: Session, role_code: str, can_manage: bool) -> SettingsOut:
             "bank_bin",
             "bank_account_number",
             "bank_account_name",
+            "kitchen_screen_enabled",
+            "auto_print_kitchen_ticket",
         )
     }
     if can_manage or role_code == RoleCode.MANAGER:
@@ -67,6 +73,13 @@ def update_settings(db: Session, changes: dict[str, Any], actor: User, ip: str |
             row.value = value
         row.updated_by = actor.id
         new[key] = value
+    if new.get("kitchen_screen_enabled") is False:
+        # Tắt màn hình bếp: các phiếu còn chờ trên màn hình coi như đã giao (không ai xử lý nữa)
+        db.execute(
+            update(SalesOrderItem)
+            .where(SalesOrderItem.kitchen_status.in_(KitchenStatus.ACTIVE))
+            .values(kitchen_status=KitchenStatus.SERVED, kitchen_updated_at=func.now())
+        )
     if new:
         audit_service.record(
             db,

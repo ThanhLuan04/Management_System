@@ -247,6 +247,7 @@ Ví dụ: tồn 10 cái giá vốn 8.000 → nhập 20 cái giá 9.500 → avg =
 - **BR-KT03** Chỉ **món ăn** vào bếp; hàng hóa (nước đóng chai…) đưa luôn tại quầy. Thanh toán xong, các dòng món có trạng thái **Chờ**, đi lần lượt **Chờ → Đang làm → Xong → Đã giao** — chỉ được tới hoặc lùi một bước (lùi để sửa bấm nhầm). Có thao tác cả phiếu: "Xong cả phiếu", "Giao cả phiếu" (món đã đi xa hơn giữ nguyên).
 - **BR-KT04** Màn hình bếp hiện phiếu còn món chưa giao, cũ nhất trước, kèm số phút đã chờ (vàng ≥ 10 phút, đỏ ≥ 20 phút); tự cập nhật mỗi 5 giây, có âm báo phiếu mới (bật / tắt).
 - **BR-KT05** Đơn bị hủy khi bếp chưa giao xong: phiếu hiện **"ĐÃ HỦY — dừng làm"** kèm lý do, không đổi trạng thái món được nữa (`ORDER_CANCELLED`), đến khi bếp bấm **"Đã biết"**. Đơn đã giao hết rồi mới hủy thì không làm phiền bếp.
+- **BR-KT07** Hai cài đặt (Admin, Cài đặt → Bếp): **Dùng màn hình bếp** (mặc định tắt — quán chưa có người làm bếp dùng hệ thống) và **Tự in phiếu bếp sau thanh toán** (mặc định bật). Tắt màn hình bếp: dòng món ghi luôn trạng thái "Đã giao", không tạo phiếu chờ, menu Bếp ẩn; các phiếu đang chờ lúc tắt được coi như đã giao. Số thứ tự, ghi chú, tùy chọn vẫn in trên phiếu bếp / hóa đơn.
 - **BR-KT06** Phiếu bếp in khổ 80mm khi bấm nút (ở quầy sau thanh toán và trên màn hình bếp): số thứ tự, hình thức, số bàn, món, số lượng, ghi chú — **không có giá tiền**.
 
 ### Chấm công (bổ sung sau MVP)

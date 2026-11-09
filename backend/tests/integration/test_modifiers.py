@@ -190,6 +190,7 @@ def test_removed_option_is_deactivated_not_deleted(client, manager, cashier, men
 # ---------- Bán ----------
 
 
+@pytest.mark.usefixtures("kitchen_screen")
 def test_options_add_to_price_cost_and_ingredients(client, cashier, manager, menu, groups, db):
     opt = groups["opt"]
     response = sell(

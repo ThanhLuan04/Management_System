@@ -72,6 +72,9 @@ def test_cashier_sees_only_store_info_and_own_limit(client, auth_headers):
         "bank_bin": "",
         "bank_account_number": "",
         "bank_account_name": "",
+        # Quầy cần biết có tự in phiếu bếp / có màn hình bếp không
+        "kitchen_screen_enabled": False,
+        "auto_print_kitchen_ticket": True,
         "my_max_discount_percent": "10",
     }
 

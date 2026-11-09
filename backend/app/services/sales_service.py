@@ -491,6 +491,8 @@ def create_order(
 
     payment_rows = _payment_rows(data, total, actor.id)
     has_dish = any(products[item.product_id].kind == ProductKind.DISH for item in data.items)
+    kitchen_screen = bool(settings_service.get_value(db, "kitchen_screen_enabled"))
+    dish_status = KitchenStatus.NEW if kitchen_screen else KitchenStatus.SERVED
     service_type = data.service_type or (ServiceType.TAKEAWAY if has_dish else None)
 
     # Bắt buộc có ca đang mở (khóa chia sẻ: không chặn thu ngân khác, nhưng đóng ca phải chờ đơn này xong)
@@ -549,8 +551,9 @@ def create_order(
             line_total=line_subtotal - allocated,
             unit_cost=inventories[product.id].avg_cost if product.kind != ProductKind.DISH else Decimal("0"),
             note=item.note,
-            # Món ăn vào hàng chờ của bếp; hàng hóa đưa luôn tại quầy
-            kitchen_status=KitchenStatus.NEW if product.kind == ProductKind.DISH else None,
+            # Món ăn vào hàng chờ của màn hình bếp; tắt màn hình bếp (in phiếu đưa bếp) thì coi như đã giao.
+            # Hàng hóa đưa luôn tại quầy → không có trạng thái bếp.
+            kitchen_status=(dish_status if product.kind == ProductKind.DISH else None),
         )
         if product.kind == ProductKind.DISH:
             # Giá vốn món = Σ(định lượng × giá vốn bình quân của nguyên liệu, đọc trên dòng tồn đã khóa).
